@@ -1,6 +1,6 @@
-export type StorageTier = 'hot' | 'warm' | 'cold'
+export type StorageTier = 'hot' | 'cold'
 
-export type RetrievalTier = 'bulk' | 'standard' | 'expedited'
+export type RetrievalTier = 'bulk' | 'standard'
 
 export type RetrievalStatus = 'pending' | 'restoring' | 'ready' | 'expired'
 
