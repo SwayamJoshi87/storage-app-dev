@@ -1,0 +1,549 @@
+openapi: 3.1.0
+info:
+  title: Archivault API
+  version: 0.1.0
+  description: |
+    Cold storage SaaS API. Files are stored in AWS S3 Glacier Deep Archive (cold)
+    or S3 Standard-IA (hot). All authenticated endpoints require a Clerk session token
+    in the `Authorization: Bearer <token>` header.
+
+    ## Upload flow
+    1. `POST /api/files` → receive `uploadTarget.uploadUrl` (pre-signed S3 PUT URL)
+    2. Client PUTs the file directly to S3 using that URL
+    3. `PATCH /api/files/{fileId}` with `{ "action": "confirm_upload" }` to mark file active
+
+    ## Retrieval flow
+    1. `POST /api/retrievals` → kicks off Glacier restore job (12–48 hr)
+    2. Poll `GET /api/retrievals` until status is `ready`
+    3. Use `downloadUrl` from the retrieval record (valid for 1 hour)
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://your-domain.com
+    description: Production
+
+security:
+  - clerkBearer: []
+
+tags:
+  - name: Vaults
+    description: Named containers for files
+  - name: Files
+    description: File upload and management
+  - name: Retrievals
+    description: Glacier restore requests
+  - name: Webhooks
+    description: Internal — called by Upstash QStash (signed requests only)
+
+paths:
+  # ── Vaults ──────────────────────────────────────────────────────────────────
+
+  /api/vaults:
+    get:
+      operationId: listVaults
+      tags: [Vaults]
+      summary: List all vaults for the authenticated user
+      responses:
+        '200':
+          description: Array of vaults
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vault'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      operationId: createVault
+      tags: [Vaults]
+      summary: Create a new vault
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVaultRequest'
+      responses:
+        '201':
+          description: Vault created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vault'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/vaults/{vaultId}:
+    parameters:
+      - $ref: '#/components/parameters/vaultId'
+
+    get:
+      operationId: getVault
+      tags: [Vaults]
+      summary: Get a single vault by ID
+      responses:
+        '200':
+          description: Vault record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vault'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      operationId: renameVault
+      tags: [Vaults]
+      summary: Rename a vault
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameVaultRequest'
+      responses:
+        '200':
+          description: Updated vault
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vault'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      operationId: deleteVault
+      tags: [Vaults]
+      summary: Delete a vault and all its files
+      responses:
+        '204':
+          description: Deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Files ───────────────────────────────────────────────────────────────────
+
+  /api/files:
+    post:
+      operationId: initiateUpload
+      tags: [Files]
+      summary: Initiate a file upload — returns a pre-signed S3 URL
+      description: |
+        Creates a file record in `pending_upload` state and returns a pre-signed S3 PUT URL.
+        The client must PUT the file directly to `uploadTarget.uploadUrl` within 15 minutes,
+        then call `PATCH /api/files/{fileId}` to confirm.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiateUploadRequest'
+      responses:
+        '201':
+          description: Upload target ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitiateUploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/files/{fileId}:
+    parameters:
+      - $ref: '#/components/parameters/fileId'
+
+    patch:
+      operationId: updateFile
+      tags: [Files]
+      summary: Perform an action on a file
+      description: |
+        Currently supports one action:
+        - `confirm_upload`: marks the file as `active` after the client has PUT to S3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileActionRequest'
+      responses:
+        '200':
+          description: Updated file record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      operationId: deleteFile
+      tags: [Files]
+      summary: Delete a file from storage and the database
+      responses:
+        '204':
+          description: Deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Retrievals ──────────────────────────────────────────────────────────────
+
+  /api/retrievals:
+    get:
+      operationId: listRetrievals
+      tags: [Retrievals]
+      summary: List in-progress retrievals for the authenticated user
+      responses:
+        '200':
+          description: Array of retrieval records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Retrieval'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      operationId: requestRetrieval
+      tags: [Retrievals]
+      summary: Request a Glacier restore for a cold-tier file
+      description: |
+        Initiates an AWS Glacier restore job. The file will be available for download
+        in 12–48 hours (bulk) or 3–5 hours (standard). A background job polls for
+        completion and sends an email when ready.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestRetrievalRequest'
+      responses:
+        '201':
+          description: Retrieval job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Retrieval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── Webhooks ─────────────────────────────────────────────────────────────────
+
+  /api/webhooks/retrieval-poll:
+    post:
+      operationId: pollRetrievalStatus
+      tags: [Webhooks]
+      summary: Internal — poll a Glacier restore job status (QStash signed)
+      description: |
+        Called by Upstash QStash on a delayed schedule. Not for direct client use.
+        Requests must include a valid QStash signature header.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [retrievalId]
+              properties:
+                retrievalId:
+                  type: string
+      responses:
+        '200':
+          description: Poll handled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+# ── Components ────────────────────────────────────────────────────────────────
+
+components:
+  securitySchemes:
+    clerkBearer:
+      type: http
+      scheme: bearer
+      description: Clerk session token (JWT)
+
+  parameters:
+    vaultId:
+      name: vaultId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Vault cuid
+
+    fileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: File cuid
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Unauthorized
+
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found or not owned by the caller
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Vault not found
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    StorageTier:
+      type: string
+      enum: [hot, cold]
+      description: hot = S3 Standard-IA (instant access), cold = S3 Glacier Deep Archive
+
+    RetrievalTier:
+      type: string
+      enum: [bulk, standard]
+      description: bulk = 12–48 hr, standard = 3–5 hr (costs more retrieval quota)
+
+    FileStatus:
+      type: string
+      enum: [pending_upload, active, restoring, ready, deleted]
+
+    RetrievalStatus:
+      type: string
+      enum: [pending, restoring, ready, expired, failed]
+
+    Vault:
+      type: object
+      required: [id, userId, name, isArchived, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isArchived:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    File:
+      type: object
+      required: [id, userId, vaultId, name, mimeType, sizeBytes, storageKey, tier, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        vaultId:
+          type: string
+        name:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        storageKey:
+          type: string
+          description: Internal S3 object key — not exposed to clients directly
+        tier:
+          $ref: '#/components/schemas/StorageTier'
+        status:
+          $ref: '#/components/schemas/FileStatus'
+        checksumSha256:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UploadTarget:
+      type: object
+      required: [uploadUrl, key, expiresAt]
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+          description: Pre-signed S3 PUT URL — valid for 15 minutes
+        key:
+          type: string
+          description: S3 object key
+        expiresAt:
+          type: string
+          format: date-time
+
+    Retrieval:
+      type: object
+      required: [id, userId, fileId, tier, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        fileId:
+          type: string
+        glacierJobId:
+          type: string
+          nullable: true
+        tier:
+          $ref: '#/components/schemas/RetrievalTier'
+        status:
+          $ref: '#/components/schemas/RetrievalStatus'
+        downloadUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: Pre-signed download URL — set when status is ready, valid for 1 hour
+        downloadExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        notifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # ── Request bodies ──────────────────────────────────────────────────────
+
+    CreateVaultRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+
+    RenameVaultRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    InitiateUploadRequest:
+      type: object
+      required: [vaultId, name, mimeType, sizeBytes]
+      properties:
+        vaultId:
+          type: string
+        name:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        tier:
+          $ref: '#/components/schemas/StorageTier'
+          default: cold
+
+    InitiateUploadResponse:
+      type: object
+      required: [file, uploadTarget]
+      properties:
+        file:
+          $ref: '#/components/schemas/File'
+        uploadTarget:
+          $ref: '#/components/schemas/UploadTarget'
+
+    FileActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [confirm_upload]
+
+    RequestRetrievalRequest:
+      type: object
+      required: [fileId]
+      properties:
+        fileId:
+          type: string
+        tier:
+          $ref: '#/components/schemas/RetrievalTier'
+          default: bulk
