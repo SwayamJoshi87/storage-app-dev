@@ -173,6 +173,134 @@ Documented for future reference only — not part of any active sprint:
 
 Do **not** implement anything from these docs without explicit discussion.
 
+## Frontend — Pages & Components
+
+> Reference files before writing any UI:
+> - **API contracts** → [`openapi.yaml`](./openapi.yaml) — every endpoint, request shape, and response shape
+> - **Data types** → [`src/server/types/index.ts`](./src/server/types/index.ts) — `StorageTier`, `FileStatus`, `RetrievalStatus`, etc.
+> - **DB columns** → [`src/db/schema.sql`](./src/db/schema.sql) — exact field names and nullability
+> - **Pricing limits** → the Pricing Tiers table in this file
+
+### Design Direction
+Dark, minimal, professional. Think "arctic cold storage" — not a flashy SaaS, a serious tool.
+- Background: near-black (`zinc-950` / `zinc-900`)
+- Accents: cold blue (`blue-400`) for actions, `emerald-400` for success/active, `amber-400` for warnings
+- Typography: clean, monospaced numbers for sizes/bytes
+- No decorative animations — subtle fade/slide transitions only
+- All shadcn/ui primitives live in `src/components/ui/` — use them, don't recreate them
+- Custom composite components go in `src/components/` (not inside `ui/`)
+
+### Route Map
+
+```
+src/app/
+  page.tsx                          # / — Landing page (public)
+  (auth)/
+    sign-in/[[...sign-in]]/page.tsx # Clerk sign-in
+    sign-up/[[...sign-up]]/page.tsx # Clerk sign-up
+  (dashboard)/
+    layout.tsx                      # Shared dashboard shell (sidebar + topbar)
+    dashboard/
+      page.tsx                      # /dashboard — Vault grid + storage usage
+    vaults/
+      [vaultId]/
+        page.tsx                    # /dashboard/vaults/[vaultId] — File list + upload
+    retrievals/
+      page.tsx                      # /dashboard/retrievals — Active restore jobs
+    settings/
+      page.tsx                      # /dashboard/settings — Plan info, account
+```
+
+### Page Specs
+
+#### `/` — Landing
+- Hero: product name, one-line value prop ("Cheap cold storage for massive files. No AWS bill anxiety.")
+- Three-column feature cards: Cold Storage, Fixed Pricing, Simple Retrieval
+- Pricing table (pull values from the Pricing Tiers section above)
+- CTA buttons → `/sign-up`
+- Navbar with logo + Sign In link
+
+#### `/dashboard` — Vault Grid
+- Page header: "My Vaults" + "New Vault" button (opens `CreateVaultDialog`)
+- `StorageUsageBar` component: shows cold used / cold limit and hot used / hot limit for the user's plan
+- Vault grid: `VaultCard` per vault — name, file count, created date, "Open" link, kebab menu (rename, delete)
+- Empty state when no vaults: illustration + "Create your first vault" CTA
+- `CreateVaultDialog`: modal with name field + optional description, calls `POST /api/vaults`
+
+#### `/dashboard/vaults/[vaultId]` — File List
+- Back link to `/dashboard`
+- Vault name as page heading + kebab menu (rename, delete vault)
+- `UploadZone`: drag-and-drop area. On drop:
+  1. `POST /api/files` with `{ vaultId, name, mimeType, sizeBytes, tier: 'cold' }`
+  2. PUT file bytes directly to `uploadTarget.uploadUrl` (pre-signed S3 URL, no auth header)
+  3. `PATCH /api/files/{fileId}` with `{ action: 'confirm_upload' }`
+  4. Refresh file list
+- File table columns: Name, Size, Tier (`TierBadge`), Status (`StatusBadge`), Uploaded, Actions
+- Actions per file: Request Restore (if status=`active` and tier=`cold`), Download (if status=`ready`), Delete
+- "Request Restore" calls `POST /api/retrievals` with `{ fileId, tier: 'bulk' }` — show confirmation dialog first (warns 12–48 hr wait, counts against monthly quota)
+- Empty state when vault has no files
+
+#### `/dashboard/retrievals` — Restore Jobs
+- Table of active/recent retrieval jobs: File name, Vault, Tier, Status (`StatusBadge`), Requested, Ready at (estimate), Download link
+- Poll `GET /api/retrievals` every 30 seconds — update status badges live
+- When status = `ready`: show a "Download" button that opens `downloadUrl` in a new tab
+- Empty state when no retrievals
+
+#### `/dashboard/settings` — Account
+- Current plan badge + storage usage breakdown (cold used, hot used, retrievals this month)
+- Plan upgrade table (same as landing pricing table, current plan highlighted)
+- Account info: email (read-only, from Clerk), member since date
+- Danger zone: Delete Account (guarded by confirmation dialog) — stub for now
+
+### Shared Components to Build
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `VaultCard` | `src/components/vault-card.tsx` | Vault grid tile — name, metadata, actions menu |
+| `FileTable` | `src/components/file-table.tsx` | Sortable file list with action buttons |
+| `UploadZone` | `src/components/upload-zone.tsx` | Drag-and-drop + click-to-browse, shows per-file progress |
+| `StorageUsageBar` | `src/components/storage-usage-bar.tsx` | Dual bar (cold + hot) with plan limit labels |
+| `TierBadge` | `src/components/tier-badge.tsx` | `cold` = blue pill, `hot` = amber pill |
+| `StatusBadge` | `src/components/status-badge.tsx` | Colour-coded pill for `FileStatus` / `RetrievalStatus` |
+| `CreateVaultDialog` | `src/components/create-vault-dialog.tsx` | shadcn Dialog wrapping vault creation form |
+| `DashboardShell` | `src/components/dashboard-shell.tsx` | Sidebar nav + topbar + main content slot |
+| `EmptyState` | `src/components/empty-state.tsx` | Reusable empty state with icon, title, description, CTA |
+
+### API Calling Convention
+Use plain `fetch` in Server Components where data can be fetched server-side.
+Use `fetch` in client components for mutations and polling. No extra data-fetching library for MVP.
+
+```ts
+// Example: fetch vaults in a Server Component
+const res = await fetch('/api/vaults', {
+  headers: { Cookie: cookies().toString() }, // forwards Clerk session
+})
+const vaults = await res.json()
+```
+
+For mutations in Client Components, call fetch directly and update local state on success. Do not use optimistic updates in MVP — keep it simple.
+
+### Upload Flow (critical — must be exact)
+```
+Client                          Server                    AWS S3
+  │── POST /api/files ─────────────▶│                         │
+  │◀─ { file, uploadTarget } ───────│                         │
+  │── PUT uploadTarget.uploadUrl ───────────────────────────▶│
+  │   (direct to S3, no auth header)                         │
+  │◀─ 200 OK ──────────────────────────────────────────────│
+  │── PATCH /api/files/{id} ────────▶│                         │
+  │   { action: 'confirm_upload' }  │                         │
+  │◀─ { file: { status: 'active' }} │                         │
+```
+The PUT to S3 is a raw `fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })`.
+Do NOT send the Clerk auth header to the S3 URL — it will break the pre-signed request.
+
+### shadcn Components Needed
+Install these before building pages:
+```bash
+npx shadcn@latest add dialog sheet table badge progress toast card separator skeleton avatar dropdown-menu
+```
+
 ## Environment Variables
 See `.env.example` for the full list. Never commit `.env.local`.
 
