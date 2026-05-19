@@ -1,14 +1,13 @@
 import { Client } from '@upstash/qstash'
 import type { IQueueProvider } from './queue.provider.interface'
 
-const qstash = new Client({ token: process.env.QSTASH_TOKEN! })
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL!
-
 export class UpstashQueueProvider implements IQueueProvider {
+  private qstash = new Client({ token: process.env.QSTASH_TOKEN ?? '' })
+  private baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
   async enqueue<T>(endpoint: string, payload: T, delaySeconds = 0): Promise<string> {
-    const res = await qstash.publishJSON({
-      url: `${BASE_URL}${endpoint}`,
+    const res = await this.qstash.publishJSON({
+      url: `${this.baseUrl}${endpoint}`,
       body: payload,
       delay: delaySeconds,
     })
@@ -16,8 +15,8 @@ export class UpstashQueueProvider implements IQueueProvider {
   }
 
   async scheduleRecurring<T>(endpoint: string, payload: T, cron: string): Promise<string> {
-    const res = await qstash.schedules.create({
-      destination: `${BASE_URL}${endpoint}`,
+    const res = await this.qstash.schedules.create({
+      destination: `${this.baseUrl}${endpoint}`,
       cron,
       body: JSON.stringify(payload),
     })
@@ -25,6 +24,6 @@ export class UpstashQueueProvider implements IQueueProvider {
   }
 
   async cancel(jobId: string): Promise<void> {
-    await qstash.messages.delete(jobId)
+    await this.qstash.messages.delete(jobId)
   }
 }
