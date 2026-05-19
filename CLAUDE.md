@@ -77,6 +77,19 @@ src/
     utils.ts                    # shadcn cn() utility
 ```
 
+## Plain SQL Schema
+
+A Drizzle-independent schema is maintained at [`src/db/schema.sql`](./src/db/schema.sql).
+
+**Rule: update `src/db/schema.sql` whenever the Drizzle schema changes.**
+This means any time you:
+- Add, rename, or drop a table or column
+- Add, rename, or drop an enum or enum value
+- Add or remove an index or constraint
+
+Make the equivalent change in `schema.sql` in the same commit as the Drizzle schema change.
+To apply it to a fresh database: `psql $DATABASE_URL -f src/db/schema.sql`
+
 ## OpenAPI Spec
 
 The API is documented in [`openapi.yaml`](./openapi.yaml) at the project root (OpenAPI 3.1.0).
@@ -101,7 +114,8 @@ Update the relevant path, schema, or component in `openapi.yaml` in the same com
 5. Add/update Drizzle implementation in `src/server/repositories/drizzle/`
 6. Write business logic in `src/server/services/`
 7. Wire into a route handler in `src/app/api/` — keep it thin (validate, call service, return)
-8. Update `openapi.yaml` to reflect any new or changed routes, request/response shapes, or enums
+8. Update `src/db/schema.sql` to mirror the Drizzle schema change (plain SQL, no Drizzle dependency)
+9. Update `openapi.yaml` to reflect any new or changed routes, request/response shapes, or enums
 
 ### Route handlers must stay thin
 ```ts
