@@ -1,7 +1,10 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { retrievalService } from '@/server/container'
+import { DrizzleUserRepository } from '@/server/repositories/drizzle/user.repository'
 import type { RetrievalTier } from '@/server/types'
+
+const userRepo = new DrizzleUserRepository()
 
 export async function GET() {
   const { userId } = await auth()
@@ -18,8 +21,8 @@ export async function POST(req: NextRequest) {
   const { fileId, tier = 'bulk' } = await req.json()
   if (!fileId) return NextResponse.json({ error: 'fileId is required' }, { status: 400 })
 
-  // TODO: read plan from DB user record once Stripe is wired up
-  const userPlan = 'free'
+  const user = await userRepo.findById(userId)
+  const userPlan = user?.plan ?? 'free'
 
   try {
     const retrieval = await retrievalService.requestRetrieval(

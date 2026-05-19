@@ -1,98 +1,142 @@
-# Archivault
+﻿# Archivault
 
-Cold storage for massive files — cheap, simple, and reliable. Built on AWS S3 Glacier Deep Archive with a consumer-friendly fixed-price model.
+Cold storage SaaS for massive files. Upload terabytes into AWS S3 Glacier Deep Archive at a flat monthly rate — no per-GB egress surprises.
 
-## What it does
-- Upload files into named **vaults** — they land in Glacier Deep Archive at ~$1/TB/month
-- **Hot tier** for files you need occasionally (S3 Standard-IA)
-- Request retrieval — restored files ready in 12–48 hours, notified by email
-- Fixed monthly plans — no AWS bill anxiety
-- Migrate files directly from Google Drive / OneDrive (MVP 4+)
+## Features
 
-## Tech Stack
-- **Framework**: Next.js 15 (App Router)
-- **UI**: shadcn/ui + Tailwind v4
-- **Auth**: Clerk
-- **Database**: Neon Postgres + Drizzle ORM
-- **Storage**: AWS S3 + Glacier Deep Archive
-- **Background jobs**: Upstash QStash
+- **Vaults** — organize files into named collections
+- **Glacier upload** — files land in S3 Glacier Deep Archive (cold) or S3 Standard-IA (hot)
+- **Restore jobs** — request a restore, get an email when the file is ready to download (12–48 hr for bulk)
+- **Fixed pricing** — Free → Starter ($4) → Personal ($10) → Creator ($30) → Power ($100)
 
-## Project Structure
-```
-src/
-  app/              # Next.js pages and API route handlers (thin layer)
-  server/           # Framework-agnostic business logic
-    services/       # Core business logic
-    repositories/   # Data access (interfaces + Drizzle implementations)
-    providers/      # External services (storage, queue) behind interfaces
-    types/          # Shared domain types
-  db/
-    schema/         # Drizzle table definitions
-    migrations/     # Versioned SQL migration files (committed to git)
-    client.ts       # DB connection singleton
-  components/       # UI components
-  lib/              # Shared utilities
-```
+## Tech stack
 
-See [CLAUDE.md](./CLAUDE.md) for full architecture details and conventions.
+| Layer | Choice |
+|---|---|
+| UI + API | Next.js 15 App Router |
+| Components | shadcn/ui + Tailwind v4 |
+| Auth | Clerk |
+| ORM | Drizzle ORM |
+| Database | Neon Postgres |
+| Storage | AWS S3 + Glacier Deep Archive |
+| Background jobs | Upstash QStash |
+| Email | Resend |
 
-## Getting Started
+## Getting started
 
-### 1. Install dependencies
+### 1. Clone and install
+
 ```bash
+git clone https://github.com/SwayamJoshi87/storage-app-dev.git
+cd storage-app-dev
 npm install
 ```
 
-### 2. Set up environment variables
+### 2. Environment variables
+
 ```bash
 cp .env.example .env.local
 ```
-Fill in all values — see comments in `.env.example`.
 
-### 3. Run DB migrations
+Fill in the values in `.env.local`. You need accounts for:
+
+- [Neon](https://neon.tech) — serverless Postgres
+- [Clerk](https://clerk.com) — auth
+- [AWS](https://aws.amazon.com) — S3 bucket with Glacier Deep Archive enabled
+- [Upstash](https://upstash.com) — QStash for background jobs
+- [Resend](https://resend.com) — transactional email
+
+### 3. Database setup
+
 ```bash
 npm run db:migrate
 ```
 
-### 4. Start dev server
+### 4. Run locally
+
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000.
 
-## Database Commands
-```bash
-npm run db:generate   # Generate migration after schema changes
-npm run db:migrate    # Apply pending migrations to Neon
-npm run db:studio     # Open Drizzle Studio (local DB browser)
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the dev server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run db:generate` | Generate a Drizzle migration from schema changes |
+| `npm run db:migrate` | Apply pending migrations to Neon |
+| `npm run db:studio` | Open Drizzle Studio (local DB browser) |
+
+## AWS IAM permissions required
+
+The IAM user behind `AWS_ACCESS_KEY_ID` needs these S3 actions on your bucket:
+
+```
+s3:PutObject
+s3:GetObject
+s3:DeleteObject
+s3:RestoreObject
+s3:HeadObject
 ```
 
-## Adding a Feature
-1. Update `src/db/schema/` → run `db:generate` → run `db:migrate`
-2. Add/update repository interface in `src/server/repositories/interfaces/`
-3. Implement in `src/server/repositories/drizzle/`
-4. Write business logic in `src/server/services/`
-5. Add thin route handler in `src/app/api/`
+## Architecture
 
-## Plans
-| Plan | Cold Storage | Price |
-|------|-------------|-------|
-| Free | 25 GB | $0 |
-| Starter | 500 GB | $4/mo |
-| Personal | 2 TB | $10/mo |
-| Creator | 10 TB | $30/mo |
-| Power | 50 TB | $100/mo |
+```
+Next.js Route Handler  ->  Service  ->  Repository  ->  Drizzle / Neon
+                                    \>  Provider   ->  AWS SDK / Upstash / Resend
+```
 
-## Roadmap
-- [x] MVP 1 — Vaults, upload, file list
-- [ ] MVP 2 — Retrieval (restore + download)
-- [ ] MVP 3 — Stripe subscriptions
-- [ ] MVP 4 — Google Drive migration
-- [ ] MVP 5 — OneDrive migration
-- [ ] Future — Compliance vaults, file compression, Backblaze B2
+Business logic lives entirely in `src/server/` with no imports from `next/*`, making it portable to any Node.js server.
 
-## Optional / Future Aspirational Docs
-These are documented for reference only — not planned or committed:
-- [docs/optional-mvp-2-imports-encryption.md](./docs/optional-mvp-2-imports-encryption.md) — multi-cloud imports (Drive, OneDrive, Dropbox, Photos), client-side AES-256-GCM encryption, family plan
-- [docs/optional-mvp-4-scale.md](./docs/optional-mvp-4-scale.md) — desktop sync agent, SOC 2, HIPAA BAA, multi-region, reseller/white-label, B2/R2 backends
+## Upload flow
+
+```
+Client                      Server                   AWS S3
+  |-- POST /api/files ---------> |                       |
+  |<- { file, uploadTarget } ----| 				          |
+  |-- PUT uploadTarget.uploadUrl ----------------------> |
+  |   (direct to S3, no auth header needed)             |
+  |<- 200 OK ------------------------------------------------|
+  |-- PATCH /api/files/{id} ----> |                      |
+  |   { action: confirm_upload }  |                      |
+  |<- { file: { status: active }} |                      |
+```
+
+## Retrieval flow
+
+```
+Client            Server              QStash          AWS Glacier
+  |-- POST /api/retrievals --> |                           |
+  |                            |-- initiateRestore ------> |
+  |                            |-- enqueue poll (30 min) -> |
+  |<- { retrieval } -----------|                           |
+  |                            |<-- POST /api/webhooks/retrieval-poll
+  |                            |-- getRetrievalStatus ---> |
+  |                            |   if ready:               |
+  |                            |     send email to user    |
+  |                            |     mark retrieval ready  |
+  |                            |   if restoring:           |
+  |                            |     re-enqueue (30 min)-> |
+```
+
+## Pricing tiers
+
+| Plan | Cold storage | Hot storage | Retrievals/mo | Price |
+|---|---|---|---|---|
+| Free | 25 GB | -- | 1 | $0 |
+| Starter | 500 GB | -- | 3 | $4/mo |
+| Personal | 2 TB | 50 GB | 5 | $10/mo |
+| Creator | 10 TB | 200 GB | 15 | $30/mo |
+| Power | 50 TB | 500 GB | 40 | $100/mo |
+
+## MVP roadmap
+
+- [x] MVP 1 -- Auth, vaults, upload to Glacier, file list
+- [x] MVP 2 -- File retrieval: restore request -> QStash background job -> email -> download
+- [ ] MVP 3 -- Stripe subscriptions, plan limits
+- [ ] MVP 4 -- Google Drive migration
+- [ ] MVP 5 -- OneDrive migration

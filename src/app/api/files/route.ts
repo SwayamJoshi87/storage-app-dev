@@ -1,7 +1,10 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { fileService } from '@/server/container'
+import { DrizzleUserRepository } from '@/server/repositories/drizzle/user.repository'
 import type { StorageTier } from '@/server/types'
+
+const userRepo = new DrizzleUserRepository()
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
@@ -12,8 +15,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // TODO: read plan from DB user record once Stripe is wired up
-  const userPlan = 'free'
+  const user = await userRepo.findById(userId)
+  const userPlan = user?.plan ?? 'free'
 
   try {
     const result = await fileService.initiateUpload(

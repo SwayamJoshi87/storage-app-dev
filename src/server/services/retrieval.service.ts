@@ -1,8 +1,10 @@
 import { createId } from '@paralleldrive/cuid2'
 import type { IRetrievalRepository } from '../repositories/interfaces/retrieval.repository.interface'
 import type { IFileRepository } from '../repositories/interfaces/file.repository.interface'
+import type { IUserRepository } from '../repositories/interfaces/user.repository.interface'
 import type { IStorageProvider } from '../providers/storage/storage.provider.interface'
 import type { IQueueProvider } from '../providers/queue/queue.provider.interface'
+import type { IEmailProvider } from '../providers/email/email.provider.interface'
 import type { Retrieval } from '@/db/schema/retrievals'
 import type { RetrievalTier } from '../types'
 
@@ -17,8 +19,10 @@ export class RetrievalService {
   constructor(
     private retrievalRepo: IRetrievalRepository,
     private fileRepo: IFileRepository,
+    private userRepo: IUserRepository,
     private storage: IStorageProvider,
     private queue: IQueueProvider,
+    private email: IEmailProvider,
   ) {}
 
   async requestRetrieval(
@@ -47,7 +51,6 @@ export class RetrievalService {
       status: 'restoring',
     })
 
-    // Schedule a background job to poll Glacier status
     await this.queue.enqueue(
       '/api/webhooks/retrieval-poll',
       { retrievalId: retrieval.id },
@@ -71,15 +74,19 @@ export class RetrievalService {
       const downloadExpiresAt = new Date(Date.now() + 3600 * 1000)
 
       await this.fileRepo.update(file.id, { status: 'ready' })
-      return this.retrievalRepo.update(retrievalId, {
+      const updated = await this.retrievalRepo.update(retrievalId, {
         status: 'ready',
         downloadUrl,
         downloadExpiresAt,
       })
+
+      // Send email notification — fire-and-forget so a send failure doesn't break the poll job
+      this.notifyUser(retrieval.userId, file.name, downloadUrl, downloadExpiresAt, retrievalId)
+
+      return updated
     }
 
     if (status === 'restoring') {
-      // Re-queue another poll
       await this.queue.enqueue(
         '/api/webhooks/retrieval-poll',
         { retrievalId },
@@ -92,5 +99,23 @@ export class RetrievalService {
 
   async listPendingRetrievals(userId: string): Promise<Retrieval[]> {
     return this.retrievalRepo.findPendingByUserId(userId)
+  }
+
+  private async notifyUser(
+    userId: string,
+    fileName: string,
+    downloadUrl: string,
+    expiresAt: Date,
+    retrievalId: string,
+  ): Promise<void> {
+    try {
+      const user = await this.userRepo.findById(userId)
+      if (!user) return
+
+      await this.email.sendRetrievalReady({ to: user.email, fileName, downloadUrl, expiresAt })
+      await this.retrievalRepo.update(retrievalId, { notifiedAt: new Date() })
+    } catch {
+      // Non-fatal — retrieval is still marked ready; user can check the dashboard
+    }
   }
 }
