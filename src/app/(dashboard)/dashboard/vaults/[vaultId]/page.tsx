@@ -1,13 +1,13 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect, notFound } from 'next/navigation'
-import Link from 'next/link'
-import { vaultService } from '@/server/container'
-import { fileService } from '@/server/container'
+import { ChevronLeft, FileIcon } from 'lucide-react'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Typography from '@mui/material/Typography'
+import { vaultService, fileService } from '@/server/container'
 import { UploadZone } from '@/components/upload-zone'
 import { FileTable } from '@/components/file-table'
 import { EmptyState } from '@/components/empty-state'
-import { Button } from '@/components/ui/button'
-import { ChevronLeftIcon, FileIcon } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ vaultId: string }>
@@ -29,37 +29,50 @@ export default async function VaultPage({ params }: PageProps) {
   const activeFiles = files.filter(f => f.status !== 'deleted')
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button render={<Link href="/dashboard" />} variant="ghost" size="icon-sm" className="text-zinc-500 hover:text-zinc-300">
-          <ChevronLeftIcon />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Button
+          href="/dashboard"
+          variant="text"
+          size="small"
+          startIcon={<ChevronLeft size={16} />}
+          sx={{ color: '#71717a', minWidth: 0, px: 0.5, '&:hover': { color: '#d4d4d8', bgcolor: 'transparent' } }}
+        >
+          Back
         </Button>
-        <h1 className="text-xl font-semibold text-zinc-100">{vault.name}</h1>
-      </div>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>{vault.name}</Typography>
+      </Box>
 
       {vault.description && (
-        <p className="text-sm text-zinc-500">{vault.description}</p>
+        <Typography variant="body2" color="text.secondary">{vault.description}</Typography>
       )}
 
-      <div>
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Upload Files</h2>
+      <Box>
+        <Typography variant="caption" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a', display: 'block', mb: 1.5 }}>
+          Upload Files
+        </Typography>
         <UploadZone vaultId={vaultId} />
-      </div>
+      </Box>
 
-      <div>
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
-          Files {activeFiles.length > 0 && <span className="ml-1 text-zinc-600">({activeFiles.length})</span>}
-        </h2>
+      <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>
+            Files
+          </Typography>
+          {activeFiles.length > 0 && (
+            <Typography variant="caption" sx={{ color: '#3f3f46' }}>({activeFiles.length})</Typography>
+          )}
+        </Box>
         {activeFiles.length === 0 ? (
           <EmptyState
-            icon={<FileIcon className="size-8" />}
+            icon={<FileIcon size={32} />}
             title="No files yet"
             description="Upload files above to archive them in cold storage."
           />
         ) : (
           <FileTable files={activeFiles} />
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   )
 }

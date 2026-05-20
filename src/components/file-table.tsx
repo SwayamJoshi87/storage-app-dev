@@ -3,26 +3,26 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog'
+import { ArchiveRestore, Download, Trash2 } from 'lucide-react'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
+import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
+import Paper from '@mui/material/Paper'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import Tooltip from '@mui/material/Tooltip'
+import Typography from '@mui/material/Typography'
 import { TierBadge } from '@/components/tier-badge'
 import { FileStatusBadge } from '@/components/status-badge'
-import { DownloadIcon, ArchiveRestoreIcon, Trash2Icon } from 'lucide-react'
 import type { File } from '@/db/schema/files'
 
 function formatBytes(bytes: number) {
@@ -37,11 +37,7 @@ function formatDate(d: Date | string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-interface FileTableProps {
-  files: File[]
-}
-
-export function FileTable({ files }: FileTableProps) {
+export function FileTable({ files }: { files: File[] }) {
   const router = useRouter()
   const [restoreFile, setRestoreFile] = useState<File | null>(null)
   const [deleteFile, setDeleteFile] = useState<File | null>(null)
@@ -51,20 +47,14 @@ export function FileTable({ files }: FileTableProps) {
     if (!restoreFile) return
     setLoading(true)
     try {
-      const res = await fetch('/api/retrievals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId: restoreFile.id, tier: 'bulk' }),
-      })
+      const res = await fetch('/api/retrievals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileId: restoreFile.id, tier: 'bulk' }) })
       if (!res.ok) throw new Error((await res.json()).error)
       setRestoreFile(null)
       router.refresh()
       toast.success('Restore request submitted. Check Retrievals for status.')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to request restore')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   async function handleDelete() {
@@ -78,109 +68,99 @@ export function FileTable({ files }: FileTableProps) {
       toast.success('File deleted')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   if (files.length === 0) return null
 
   return (
     <>
-      <div className="rounded-lg border border-zinc-800 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-zinc-800 hover:bg-transparent">
-              <TableHead className="text-zinc-500">Name</TableHead>
-              <TableHead className="text-zinc-500 tabular-nums">Size</TableHead>
-              <TableHead className="text-zinc-500">Tier</TableHead>
-              <TableHead className="text-zinc-500">Status</TableHead>
-              <TableHead className="text-zinc-500">Uploaded</TableHead>
-              <TableHead className="text-zinc-500 text-right">Actions</TableHead>
+      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #27272a', borderRadius: 2 }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Size</TableCell>
+              <TableCell>Tier</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Uploaded</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
-          </TableHeader>
+          </TableHead>
           <TableBody>
             {files.map(file => (
-              <TableRow key={file.id} className="border-zinc-800 hover:bg-zinc-900/50">
-                <TableCell className="font-medium text-zinc-200 max-w-xs truncate">{file.name}</TableCell>
-                <TableCell className="tabular-nums text-zinc-400">{formatBytes(file.sizeBytes)}</TableCell>
+              <TableRow key={file.id}>
+                <TableCell sx={{ maxWidth: 200 }}>
+                  <Typography variant="body2" color="text.primary" noWrap sx={{ fontWeight: 500 }}>{file.name}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {formatBytes(file.sizeBytes)}
+                  </Typography>
+                </TableCell>
                 <TableCell><TierBadge tier={file.tier} /></TableCell>
                 <TableCell><FileStatusBadge status={file.status} /></TableCell>
-                <TableCell className="text-zinc-500">{formatDate(file.createdAt)}</TableCell>
                 <TableCell>
-                  <div className="flex items-center justify-end gap-1">
+                  <Typography variant="body2" color="text.secondary">{formatDate(file.createdAt)}</Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.25 }}>
                     {file.status === 'active' && file.tier === 'cold' && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-zinc-500 hover:text-zinc-200"
-                        onClick={() => setRestoreFile(file)}
-                        title="Request Restore"
-                      >
-                        <ArchiveRestoreIcon />
-                      </Button>
+                      <Tooltip title="Request Restore">
+                        <IconButton size="small" onClick={() => setRestoreFile(file)} sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
+                          <ArchiveRestore size={15} />
+                        </IconButton>
+                      </Tooltip>
                     )}
                     {file.status === 'ready' && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-zinc-500 hover:text-zinc-200"
-                        title="Download"
-                        onClick={() => toast.info('Download link available in Retrievals')}
-                      >
-                        <DownloadIcon />
-                      </Button>
+                      <Tooltip title="Download (see Retrievals)">
+                        <IconButton size="small" onClick={() => toast.info('Download link available in Retrievals')} sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
+                          <Download size={15} />
+                        </IconButton>
+                      </Tooltip>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-zinc-500 hover:text-red-400"
-                      onClick={() => setDeleteFile(file)}
-                      title="Delete"
-                    >
-                      <Trash2Icon />
-                    </Button>
-                  </div>
+                    <Tooltip title="Delete">
+                      <IconButton size="small" onClick={() => setDeleteFile(file)} sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}>
+                        <Trash2 size={15} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </div>
+      </TableContainer>
 
-      {/* Restore confirm dialog */}
-      <Dialog open={!!restoreFile} onOpenChange={open => !open && setRestoreFile(null)}>
+      <Dialog open={!!restoreFile} onClose={() => setRestoreFile(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontSize: '1rem', fontWeight: 600 }}>Request Restore</DialogTitle>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Request Restore</DialogTitle>
-            <DialogDescription>
-              Restoring &ldquo;{restoreFile?.name}&rdquo; from Glacier Deep Archive takes 12–48 hours (bulk tier).
-              This counts against your monthly retrieval quota.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button disabled={loading} onClick={handleRequestRestore}>
-              {loading ? 'Requesting…' : 'Request Restore'}
-            </Button>
-          </DialogFooter>
+          <DialogContentText variant="body2">
+            Restoring &quot;{restoreFile?.name}&quot; from Glacier Deep Archive takes 12–48 hours (bulk tier).
+            This counts against your monthly retrieval quota.
+          </DialogContentText>
         </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setRestoreFile(null)} variant="text" size="small" color="inherit">Cancel</Button>
+          <Button onClick={handleRequestRestore} variant="contained" size="small" disabled={loading} disableElevation>
+            {loading ? 'Requesting…' : 'Request Restore'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
-      {/* Delete confirm dialog */}
-      <Dialog open={!!deleteFile} onOpenChange={open => !open && setDeleteFile(null)}>
+      <Dialog open={!!deleteFile} onClose={() => setDeleteFile(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontSize: '1rem', fontWeight: 600 }}>Delete &quot;{deleteFile?.name}&quot;?</DialogTitle>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete &ldquo;{deleteFile?.name}&rdquo;?</DialogTitle>
-            <DialogDescription>
-              This permanently deletes the file from storage. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="destructive" disabled={loading} onClick={handleDelete}>
-              {loading ? 'Deleting…' : 'Delete File'}
-            </Button>
-          </DialogFooter>
+          <DialogContentText variant="body2">
+            This permanently deletes the file from storage. This action cannot be undone.
+          </DialogContentText>
         </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteFile(null)} variant="text" size="small" color="inherit">Cancel</Button>
+          <Button onClick={handleDelete} variant="contained" color="error" size="small" disabled={loading} disableElevation>
+            {loading ? 'Deleting…' : 'Delete File'}
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   )

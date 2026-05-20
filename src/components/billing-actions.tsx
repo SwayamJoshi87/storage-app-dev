@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import Button from '@mui/material/Button'
 import type { Plan } from '@/server/services/billing.service'
 
 type UpgradeButtonProps = {
@@ -22,9 +22,7 @@ export function UpgradeButton({ plan, label, currentPlan }: UpgradeButtonProps) 
         body: JSON.stringify({ plan }),
       })
       const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      }
+      if (data.url) window.location.href = data.url
     } finally {
       setLoading(false)
     }
@@ -34,17 +32,17 @@ export function UpgradeButton({ plan, label, currentPlan }: UpgradeButtonProps) 
 
   return (
     <Button
-      size="sm"
-      variant={isCurrentPlan ? 'outline' : 'default'}
+      size="small"
+      variant={isCurrentPlan ? 'outlined' : 'contained'}
       disabled={isCurrentPlan || loading}
       onClick={handleClick}
-      className={
-        isCurrentPlan
-          ? 'border-blue-500/30 text-blue-400 cursor-default'
-          : 'bg-blue-600 hover:bg-blue-500 text-white'
+      disableElevation
+      sx={isCurrentPlan
+        ? { borderColor: 'rgba(96,165,250,0.3)', color: '#60a5fa', fontSize: '0.75rem', py: 0.25, px: 1.5 }
+        : { fontSize: '0.75rem', py: 0.25, px: 1.5 }
       }
     >
-      {loading ? 'Redirecting…' : isCurrentPlan ? 'Current plan' : `Upgrade to ${label}`}
+      {loading ? 'Redirecting…' : isCurrentPlan ? 'Current' : `Upgrade`}
     </Button>
   )
 }
@@ -63,9 +61,7 @@ export function ManageBillingButton({ hasSubscription }: ManageBillingButtonProp
     try {
       const res = await fetch('/api/billing/portal', { method: 'POST' })
       const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      }
+      if (data.url) window.location.href = data.url
     } finally {
       setLoading(false)
     }
@@ -73,11 +69,11 @@ export function ManageBillingButton({ hasSubscription }: ManageBillingButtonProp
 
   return (
     <Button
-      variant="outline"
-      size="sm"
+      variant="outlined"
+      size="small"
       onClick={handleClick}
       disabled={loading}
-      className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+      sx={{ borderColor: '#3f3f46', color: '#d4d4d8', '&:hover': { borderColor: '#71717a' }, fontSize: '0.75rem', py: 0.25, px: 1.5 }}
     >
       {loading ? 'Redirecting…' : 'Manage Billing'}
     </Button>

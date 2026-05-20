@@ -1,160 +1,184 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { SnowflakeIcon, ShieldCheckIcon, DollarSignIcon, ArchiveIcon, CheckIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Snowflake, ShieldCheck, DollarSign, Archive, Check } from 'lucide-react'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import Chip from '@mui/material/Chip'
+import Container from '@mui/material/Container'
+import Divider from '@mui/material/Divider'
+import Grid from '@mui/material/Grid'
+import Typography from '@mui/material/Typography'
 
 const PLANS = [
-  { label: 'Free',     price: '$0',      cold: '25 GB',  hot: '—',       retrievals: 1  },
-  { label: 'Starter',  price: '$4/mo',   cold: '500 GB', hot: '—',       retrievals: 3  },
-  { label: 'Personal', price: '$10/mo',  cold: '2 TB',   hot: '50 GB',   retrievals: 5  },
-  { label: 'Creator',  price: '$30/mo',  cold: '10 TB',  hot: '200 GB',  retrievals: 15 },
-  { label: 'Power',    price: '$100/mo', cold: '50 TB',  hot: '500 GB',  retrievals: 40 },
+  { label: 'Free',     price: '$0',      cold: '25 GB',  hot: '—',       retrievals: 1,  popular: false },
+  { label: 'Starter',  price: '$4/mo',   cold: '500 GB', hot: '—',       retrievals: 3,  popular: false },
+  { label: 'Personal', price: '$10/mo',  cold: '2 TB',   hot: '50 GB',   retrievals: 5,  popular: true  },
+  { label: 'Creator',  price: '$30/mo',  cold: '10 TB',  hot: '200 GB',  retrievals: 15, popular: false },
+  { label: 'Power',    price: '$100/mo', cold: '50 TB',  hot: '500 GB',  retrievals: 40, popular: false },
 ]
 
 const FEATURES = [
-  {
-    icon: ArchiveIcon,
-    title: 'Glacier Deep Archive',
-    description: 'Files land in AWS S3 Glacier Deep Archive — the cheapest durable storage on the planet. 99.999999999% durability.',
-  },
-  {
-    icon: DollarSignIcon,
-    title: 'Fixed Monthly Pricing',
-    description: 'One flat fee per month. No per-GB egress charges, no surprise bills. Know exactly what you pay.',
-  },
-  {
-    icon: ShieldCheckIcon,
-    title: 'Simple Retrieval',
-    description: 'Request a restore and get notified when your files are ready to download. Bulk restores in 12–48 hours.',
-  },
+  { icon: Archive,     title: 'Glacier Deep Archive',   description: 'Files land in AWS S3 Glacier Deep Archive — the cheapest durable storage on the planet. 99.999999999% durability.' },
+  { icon: DollarSign,  title: 'Fixed Monthly Pricing',  description: 'One flat fee per month. No per-GB egress charges, no surprise bills. Know exactly what you pay.' },
+  { icon: ShieldCheck, title: 'Simple Retrieval',       description: 'Request a restore and get notified when your files are ready to download. Bulk restores in 12–48 hours.' },
 ]
 
 export default async function LandingPage() {
   const { userId } = await auth()
   if (userId) redirect('/dashboard')
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
+
       {/* Navbar */}
-      <nav className="border-b border-zinc-800/50 px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <SnowflakeIcon className="size-5 text-blue-400" />
-            <span className="font-semibold tracking-tight">Archivault</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Button render={<Link href="/sign-in" />} variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-100">
+      <Box
+        component="nav"
+        sx={{ borderBottom: '1px solid rgba(39,39,42,0.6)', px: 3, py: 1.5 }}
+      >
+        <Container maxWidth="lg" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box component="a" href="/" sx={{ display: 'flex', alignItems: 'center', gap: 1, textDecoration: 'none', color: 'text.primary' }}>
+            <Snowflake size={18} color="#60a5fa" />
+            <Typography variant="body1" sx={{ fontWeight: 600, letterSpacing: '-0.01em' }}>Archivault</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button href="/sign-in" variant="text" size="small" sx={{ color: 'text.secondary' }}>
               Sign In
             </Button>
-            <Button render={<Link href="/sign-up" />} size="sm">
+            <Button href="/sign-up" variant="contained" size="small" disableElevation>
               Get Started
             </Button>
-          </div>
-        </div>
-      </nav>
+          </Box>
+        </Container>
+      </Box>
 
       {/* Hero */}
-      <section className="px-6 py-24 text-center">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/5 px-3 py-1 text-xs text-blue-400">
-            <SnowflakeIcon className="size-3" />
-            Powered by AWS S3 Glacier Deep Archive
-          </div>
-          <h1 className="mt-4 text-4xl font-bold tracking-tight text-zinc-50 sm:text-5xl">
+      <Box component="section" sx={{ py: 14, textAlign: 'center', px: 3 }}>
+        <Container maxWidth="md">
+          <Chip
+            icon={<Snowflake size={12} color="#60a5fa" />}
+            label="Powered by AWS S3 Glacier Deep Archive"
+            size="small"
+            sx={{ mb: 3, bgcolor: 'rgba(96,165,250,0.05)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.2)', fontSize: '0.7rem' }}
+          />
+          <Typography variant="h3" gutterBottom sx={{ fontWeight: 700, letterSpacing: '-0.02em', color: '#fafafa' }}>
             Cheap cold storage<br />for massive files.
-          </h1>
-          <p className="mt-4 text-lg text-zinc-400">
-            No AWS bill anxiety. Fixed monthly pricing. Archive terabytes of data
-            without watching a cost dashboard.
-          </p>
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Button render={<Link href="/sign-up" />} size="lg" className="w-full sm:w-auto">
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 1, mb: 4, maxWidth: 480, mx: 'auto' }}>
+            No AWS bill anxiety. Fixed monthly pricing. Archive terabytes of data without watching a cost dashboard.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button href="/sign-up" variant="contained" size="large" disableElevation>
               Start for free
             </Button>
-            <Button render={<Link href="#pricing" />} variant="outline" size="lg" className="w-full border-zinc-700 text-zinc-300 hover:text-zinc-100 sm:w-auto">
+            <Button href="#pricing" variant="outlined" size="large"
+              sx={{ borderColor: '#3f3f46', color: '#d4d4d8', '&:hover': { borderColor: '#71717a' } }}>
               See pricing
             </Button>
-          </div>
-        </div>
-      </section>
+          </Box>
+        </Container>
+      </Box>
 
       {/* Features */}
-      <section className="px-6 py-16">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {FEATURES.map(feature => (
-              <div
-                key={feature.title}
-                className="rounded-xl border border-zinc-800 bg-zinc-900 p-6"
-              >
-                <div className="mb-4 inline-flex rounded-lg bg-blue-500/10 p-2.5 text-blue-400">
-                  <feature.icon className="size-5" />
-                </div>
-                <h3 className="font-semibold text-zinc-100">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">{feature.description}</p>
-              </div>
+      <Box component="section" sx={{ py: 8, px: 3 }}>
+        <Container maxWidth="lg">
+          <Grid container spacing={3}>
+            {FEATURES.map(({ icon: Icon, title, description }) => (
+              <Grid key={title} size={{ xs: 12, md: 4 }}>
+                <Card elevation={0} sx={{ height: '100%', bgcolor: 'background.paper' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'inline-flex', p: 1.25, borderRadius: 1.5, bgcolor: 'rgba(96,165,250,0.1)', color: '#60a5fa', mb: 2 }}>
+                      <Icon size={20} />
+                    </Box>
+                    <Typography variant="body1" gutterBottom sx={{ fontWeight: 600 }}>{title}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>{description}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
             ))}
-          </div>
-        </div>
-      </section>
+          </Grid>
+        </Container>
+      </Box>
 
       {/* Pricing */}
-      <section id="pricing" className="px-6 py-16">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-10 text-center">
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-50">Simple pricing</h2>
-            <p className="mt-2 text-zinc-400">Pay once a month. No per-GB surprises.</p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {PLANS.map((plan, i) => (
-              <div
-                key={plan.label}
-                className={`rounded-xl border p-5 flex flex-col ${
-                  i === 2
-                    ? 'border-blue-500/40 bg-blue-500/5'
-                    : 'border-zinc-800 bg-zinc-900'
-                }`}
-              >
-                {i === 2 && (
-                  <div className="mb-3 text-xs font-medium text-blue-400">Most popular</div>
-                )}
-                <div className="font-semibold text-zinc-100">{plan.label}</div>
-                <div className="mt-1 text-2xl font-bold tabular-nums text-zinc-50">{plan.price}</div>
-                <div className="mt-4 space-y-2 flex-1">
-                  <div className="flex items-center gap-2 text-xs text-zinc-400">
-                    <CheckIcon className="size-3.5 text-emerald-400 shrink-0" />
-                    {plan.cold} cold storage
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-zinc-400">
-                    <CheckIcon className="size-3.5 text-emerald-400 shrink-0" />
-                    {plan.hot} hot storage
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-zinc-400">
-                    <CheckIcon className="size-3.5 text-emerald-400 shrink-0" />
-                    {plan.retrievals} retrieval{plan.retrievals !== 1 ? 's' : ''}/mo
-                  </div>
-                </div>
-                <Button
-                  render={<Link href="/sign-up" />}
-                  size="sm"
-                  variant={i === 2 ? 'default' : 'outline'}
-                  className={`mt-5 w-full ${i !== 2 ? 'border-zinc-700 text-zinc-300 hover:text-zinc-100' : ''}`}
+      <Box component="section" id="pricing" sx={{ py: 8, px: 3 }}>
+        <Container maxWidth="lg">
+          <Box sx={{ textAlign: 'center', mb: 6 }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, letterSpacing: '-0.02em', color: '#fafafa' }}>
+              Simple pricing
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Pay once a month. No per-GB surprises.
+            </Typography>
+          </Box>
+          <Grid container spacing={2}>
+            {PLANS.map(plan => (
+              <Grid key={plan.label} size={{ xs: 12, sm: 6, lg: 'grow' }}>
+                <Card
+                  elevation={0}
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    bgcolor: 'background.paper',
+                    ...(plan.popular && { border: '1px solid rgba(96,165,250,0.4)', bgcolor: 'rgba(96,165,250,0.03)' }),
+                  }}
                 >
-                  Get started
-                </Button>
-              </div>
+                  <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    {plan.popular && (
+                      <Typography variant="caption" color="primary" sx={{ fontWeight: 600, display: 'block', mb: 1 }}>
+                        Most popular
+                      </Typography>
+                    )}
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{plan.label}</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, mb: 2.5, fontVariantNumeric: 'tabular-nums' }}>
+                      {plan.price}
+                    </Typography>
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                      {[
+                        `${plan.cold} cold storage`,
+                        `${plan.hot} hot storage`,
+                        `${plan.retrievals} retrieval${plan.retrievals !== 1 ? 's' : ''}/mo`,
+                      ].map(item => (
+                        <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Check size={12} color="#34d399" />
+                          <Typography variant="caption" color="text.secondary">{item}</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                    <Button
+                      href="/sign-up"
+                      fullWidth
+                      variant={plan.popular ? 'contained' : 'outlined'}
+                      size="small"
+                      disableElevation
+                      sx={{
+                        mt: 2.5,
+                        ...(!plan.popular && { borderColor: '#3f3f46', color: '#d4d4d8', '&:hover': { borderColor: '#71717a' } }),
+                      }}
+                    >
+                      Get started
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Grid>
             ))}
-          </div>
-        </div>
-      </section>
+          </Grid>
+        </Container>
+      </Box>
+
+      <Divider sx={{ borderColor: 'rgba(39,39,42,0.5)' }} />
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800/50 px-6 py-8 text-center text-xs text-zinc-600">
-        <div className="flex items-center justify-center gap-2">
-          <SnowflakeIcon className="size-3 text-blue-500/50" />
-          <span>Archivault — Cold Storage for Massive Files</span>
-        </div>
-      </footer>
-    </div>
+      <Box component="footer" sx={{ py: 4, textAlign: 'center' }}>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          <Snowflake size={12} color="rgba(96,165,250,0.4)" />
+          <Typography variant="caption" sx={{ color: '#3f3f46' }}>
+            Archivault — Cold Storage for Massive Files
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
   )
 }

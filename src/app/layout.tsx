@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { ClerkProvider } from '@clerk/nextjs'
-import { Toaster } from '@/components/ui/sonner'
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter'
+import { MuiThemeProvider } from '@/components/mui-theme-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -15,11 +16,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html
         lang="en"
-        className={`${GeistSans.variable} ${GeistMono.variable} dark h-full antialiased`}
+        className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
       >
-        <body className="min-h-full bg-zinc-950 text-zinc-100">
-          {children}
-          <Toaster />
+        <body style={{ minHeight: '100%', backgroundColor: '#09090b', color: '#f4f4f5', margin: 0 }}>
+          <AppRouterCacheProvider>
+            <MuiThemeProvider>
+              {children}
+            </MuiThemeProvider>
+          </AppRouterCacheProvider>
         </body>
       </html>
     </ClerkProvider>
