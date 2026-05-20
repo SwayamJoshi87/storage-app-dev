@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { vaultService } from '@/server/container'
+import { vaultService, fileService, userRepo } from '@/server/container'
 import { VaultCard } from '@/components/vault-card'
 import { CreateVaultDialog } from '@/components/create-vault-dialog'
 import { StorageUsageBar } from '@/components/storage-usage-bar'
@@ -11,7 +11,11 @@ export default async function DashboardPage() {
   const { userId } = await auth()
   if (!userId) redirect('/sign-in')
 
-  const vaults = await vaultService.listVaults(userId)
+  const [vaults, usage, user] = await Promise.all([
+    vaultService.listVaults(userId),
+    fileService.getStorageUsage(userId),
+    userRepo.findById(userId),
+  ])
 
   return (
     <div className="space-y-6">
@@ -20,7 +24,11 @@ export default async function DashboardPage() {
         <CreateVaultDialog />
       </div>
 
-      <StorageUsageBar plan="free" coldUsedBytes={0} hotUsedBytes={0} />
+      <StorageUsageBar
+        plan={user?.plan ?? 'free'}
+        coldUsedBytes={usage.coldBytes}
+        hotUsedBytes={usage.hotBytes}
+      />
 
       {vaults.length === 0 ? (
         <EmptyState

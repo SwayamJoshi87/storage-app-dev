@@ -2,7 +2,10 @@ import { Client } from '@upstash/qstash'
 import type { IQueueProvider } from './queue.provider.interface'
 
 export class UpstashQueueProvider implements IQueueProvider {
-  private qstash = new Client({ token: process.env.QSTASH_TOKEN ?? '' })
+  private qstash = new Client({
+    token: process.env.QSTASH_TOKEN ?? '',
+    baseUrl: process.env.QSTASH_URL,
+  })
   private baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
   async enqueue<T>(endpoint: string, payload: T, delaySeconds = 0): Promise<string> {

@@ -71,10 +71,21 @@ export class FileService {
     return { file, uploadTarget }
   }
 
+  async uploadContent(userId: string, fileId: string, body: Buffer, contentType: string): Promise<void> {
+    const file = await this.fileRepo.findById(fileId)
+    if (!file || file.userId !== userId) throw new Error('File not found')
+    await this.storage.putObject(file.storageKey, body, contentType, file.tier as 'cold' | 'hot')
+  }
+
   async confirmUpload(userId: string, fileId: string): Promise<File> {
     const file = await this.fileRepo.findById(fileId)
     if (!file || file.userId !== userId) throw new Error('File not found')
+    await this.storage.transitionStorageClass(file.storageKey, file.tier as 'cold' | 'hot')
     return this.fileRepo.update(fileId, { status: 'active' })
+  }
+
+  async getStorageUsage(userId: string): Promise<{ coldBytes: number; hotBytes: number }> {
+    return this.fileRepo.sumStorageByUserId(userId)
   }
 
   async listFiles(userId: string, vaultId: string): Promise<File[]> {

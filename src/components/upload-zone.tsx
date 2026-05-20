@@ -59,13 +59,17 @@ export function UploadZone({ vaultId }: UploadZoneProps) {
 
       updateItem(index, { progress: 30 })
 
-      // Step 2: PUT directly to S3 — no auth header
-      const s3Res = await fetch(uploadTarget.uploadUrl, {
+      // Step 2: PUT directly to S3 via pre-signed URL — no auth header
+      const uploadRes = await fetch(uploadTarget.uploadUrl, {
         method: 'PUT',
         body: file,
         headers: { 'Content-Type': file.type || 'application/octet-stream' },
       })
-      if (!s3Res.ok) throw new Error('S3 upload failed')
+      if (!uploadRes.ok) {
+        const body = await uploadRes.text().catch(() => '')
+        const code = body.match(/<Code>(.*?)<\/Code>/)?.[1] ?? uploadRes.status
+        throw new Error(`S3 upload failed: ${code}`)
+      }
 
       updateItem(index, { status: 'confirming', progress: 80 })
 

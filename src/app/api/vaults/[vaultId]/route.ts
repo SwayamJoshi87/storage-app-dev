@@ -41,7 +41,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     await vaultService.deleteVault(userId, vaultId)
     return new NextResponse(null, { status: 204 })
-  } catch {
-    return NextResponse.json({ error: 'Vault not found' }, { status: 404 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Delete failed'
+    const status = message === 'Vault not found' ? 404 : 500
+    return NextResponse.json({ error: message }, { status })
   }
 }

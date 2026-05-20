@@ -96,12 +96,12 @@ export function VaultCard({ vault }: { vault: Vault }) {
                 <span className="sr-only">Vault options</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => { setNewName(vault.name); setRenameOpen(true) }}>
+                <DropdownMenuItem onClick={() => { setNewName(vault.name); setRenameOpen(true) }}>
                   <Pencil />
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
+                <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
                   <Trash2 />
                   Delete
                 </DropdownMenuItem>

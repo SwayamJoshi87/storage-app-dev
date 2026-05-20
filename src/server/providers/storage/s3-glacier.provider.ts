@@ -1,6 +1,7 @@
 import {
   S3Client,
   PutObjectCommand,
+  CopyObjectCommand,
   DeleteObjectCommand,
   RestoreObjectCommand,
   HeadObjectCommand,
@@ -10,8 +11,13 @@ import type { IStorageProvider } from './storage.provider.interface'
 import type { FileMetadata, RetrievalTier, RetrievalStatus, UploadTarget } from '../../types'
 
 export class S3GlacierProvider implements IStorageProvider {
-  private s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' })
-  private bucket = process.env.AWS_S3_BUCKET ?? ''
+  private get s3() {
+    return new S3Client({
+      region: process.env.AWS_REGION ?? 'us-east-1',
+      followRegionRedirects: true,
+    })
+  }
+  private get bucket() { return process.env.AWS_S3_BUCKET ?? '' }
 
   private requireBucket(): string {
     if (!this.bucket) throw new Error('AWS_S3_BUCKET is not configured in environment variables')
@@ -27,12 +33,13 @@ export class S3GlacierProvider implements IStorageProvider {
     metadata: FileMetadata,
     expiresInSeconds = 900,
   ): Promise<UploadTarget> {
+    // StorageClass is intentionally omitted here — x-amz-storage-class as a signed header
+    // requires non-trivial CORS configuration and causes SignatureDoesNotMatch 403s in browsers.
+    // transitionStorageClass() is called server-side after the client confirms the upload.
     const command = new PutObjectCommand({
       Bucket: this.requireBucket(),
       Key: key,
-      StorageClass: metadata.tier === 'cold' ? 'DEEP_ARCHIVE' : 'STANDARD_IA',
       ContentType: metadata.mimeType,
-      Tagging: `userId=${metadata.userId}&vaultId=${metadata.vaultId}&plan=free`,
     })
 
     const uploadUrl = await getSignedUrl(this.s3, command, { expiresIn: expiresInSeconds })
@@ -40,7 +47,20 @@ export class S3GlacierProvider implements IStorageProvider {
       uploadUrl,
       key,
       expiresAt: new Date(Date.now() + expiresInSeconds * 1000),
+      requiredHeaders: {},
     }
+  }
+
+  async transitionStorageClass(key: string, tier: 'cold' | 'hot'): Promise<void> {
+    const bucket = this.requireBucket()
+    const storageClass = tier === 'cold' ? 'DEEP_ARCHIVE' : 'STANDARD_IA'
+    await this.s3.send(new CopyObjectCommand({
+      Bucket: bucket,
+      CopySource: `${bucket}/${key}`,
+      Key: key,
+      StorageClass: storageClass,
+      MetadataDirective: 'COPY',
+    }))
   }
 
   async initiateRetrieval(key: string, tier: RetrievalTier): Promise<string> {
@@ -68,6 +88,16 @@ export class S3GlacierProvider implements IStorageProvider {
     const { GetObjectCommand } = await import('@aws-sdk/client-s3')
     const command = new GetObjectCommand({ Bucket: this.requireBucket(), Key: key })
     return getSignedUrl(this.s3, command, { expiresIn: expiresInSeconds })
+  }
+
+  async putObject(key: string, body: Buffer, contentType: string, tier: 'cold' | 'hot'): Promise<void> {
+    await this.s3.send(new PutObjectCommand({
+      Bucket: this.requireBucket(),
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      StorageClass: tier === 'cold' ? 'DEEP_ARCHIVE' : 'STANDARD_IA',
+    }))
   }
 
   async deleteObject(key: string): Promise<void> {

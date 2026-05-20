@@ -22,6 +22,8 @@ export interface UploadTarget {
   uploadUrl: string
   key: string
   expiresAt: Date
+  /** Headers the browser must include in the PUT request to satisfy the pre-signed signature */
+  requiredHeaders: Record<string, string>
 }
 
 export interface RetrievalJob {

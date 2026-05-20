@@ -33,8 +33,10 @@ tags:
     description: File upload and management
   - name: Retrievals
     description: Glacier restore requests
+  - name: Billing
+    description: Stripe subscription management
   - name: Webhooks
-    description: Internal — called by Upstash QStash (signed requests only)
+    description: Internal — called by Upstash QStash or Stripe (signed requests only)
 
 paths:
   # ── Vaults ──────────────────────────────────────────────────────────────────
@@ -251,7 +253,91 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  # ── Billing ──────────────────────────────────────────────────────────────────
+
+  /api/billing/checkout:
+    post:
+      operationId: createCheckoutSession
+      tags: [Billing]
+      summary: Create a Stripe checkout session to subscribe to a paid plan
+      description: |
+        Returns a Stripe-hosted checkout URL. Redirect the user to this URL.
+        On success Stripe fires the `checkout.session.completed` webhook which
+        updates the user's plan in the database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCheckoutRequest'
+      responses:
+        '200':
+          description: Checkout URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RedirectUrlResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/billing/portal:
+    post:
+      operationId: createPortalSession
+      tags: [Billing]
+      summary: Create a Stripe billing portal session for plan changes and cancellation
+      description: |
+        Returns a Stripe-hosted billing portal URL. Redirect the user to this URL.
+        Available only for users who already have a Stripe subscription.
+      responses:
+        '200':
+          description: Portal URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RedirectUrlResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   # ── Webhooks ─────────────────────────────────────────────────────────────────
+
+  /api/webhooks/stripe:
+    post:
+      operationId: stripeWebhook
+      tags: [Webhooks]
+      summary: Internal — Stripe subscription event handler (Stripe signed)
+      description: |
+        Receives Stripe webhook events. Must include a valid `stripe-signature` header.
+        Handles: `checkout.session.completed`, `customer.subscription.updated`,
+        `customer.subscription.deleted`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Event received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /api/webhooks/retrieval-poll:
     post:
@@ -430,7 +516,7 @@ components:
 
     UploadTarget:
       type: object
-      required: [uploadUrl, key, expiresAt]
+      required: [uploadUrl, key, expiresAt, requiredHeaders]
       properties:
         uploadUrl:
           type: string
@@ -442,6 +528,11 @@ components:
         expiresAt:
           type: string
           format: date-time
+        requiredHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Extra headers the browser must include in the PUT request (currently always empty — storage class is applied server-side after confirmation)
 
     Retrieval:
       type: object
@@ -547,3 +638,24 @@ components:
         tier:
           $ref: '#/components/schemas/RetrievalTier'
           default: bulk
+
+    Plan:
+      type: string
+      enum: [free, starter, personal, creator, power]
+
+    CreateCheckoutRequest:
+      type: object
+      required: [plan]
+      properties:
+        plan:
+          $ref: '#/components/schemas/Plan'
+          description: The paid plan to subscribe to (free is not valid here)
+
+    RedirectUrlResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Stripe-hosted redirect URL
