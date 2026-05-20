@@ -1,40 +1,22 @@
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { cn } from '@/lib/utils'
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
 
 interface EmptyStateProps {
   icon?: React.ReactNode
   title: string
   description?: string
-  action?: {
-    label: string
-    href?: string
-    onClick?: () => void
-  }
-  className?: string
+  action?: React.ReactNode
 }
 
-export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center py-16 text-center', className)}>
-      {icon && (
-        <div className="mb-4 text-zinc-600">{icon}</div>
-      )}
-      <h3 className="text-sm font-medium text-zinc-300">{title}</h3>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 1, textAlign: 'center' }}>
+      {icon && <Box sx={{ color: '#3f3f46', mb: 0.5 }}>{icon}</Box>}
+      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{title}</Typography>
       {description && (
-        <p className="mt-1 text-sm text-zinc-500">{description}</p>
+        <Typography variant="caption" sx={{ color: '#52525b', maxWidth: 300, display: 'block' }}>{description}</Typography>
       )}
-      {action && (
-        <div className="mt-4">
-          {action.href ? (
-            <Button render={<Link href={action.href} />} size="sm">
-              {action.label}
-            </Button>
-          ) : (
-            <Button size="sm" onClick={action.onClick}>{action.label}</Button>
-          )}
-        </div>
-      )}
-    </div>
+      {action && <Box sx={{ mt: 1.5 }}>{action}</Box>}
+    </Box>
   )
 }
