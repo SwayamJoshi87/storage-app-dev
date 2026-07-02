@@ -5,32 +5,17 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { MoreHorizontal, Folder, Pencil, Trash2 } from 'lucide-react'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardActions from '@mui/material/CardActions'
-import CardContent from '@mui/material/CardContent'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogContentText from '@mui/material/DialogContentText'
-import DialogTitle from '@mui/material/DialogTitle'
-import Divider from '@mui/material/Divider'
-import IconButton from '@mui/material/IconButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
-import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { formatDate } from '@/lib/utils'
 import type { Vault } from '@/db/schema/vaults'
-
-function formatDate(d: Date | string) {
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
 
 export function VaultCard({ vault }: { vault: Vault }) {
   const router = useRouter()
-  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   const [renameOpen, setRenameOpen] = useState(false)
   const [newName, setNewName] = useState(vault.name)
   const [renaming, setRenaming] = useState(false)
@@ -53,9 +38,7 @@ export function VaultCard({ vault }: { vault: Vault }) {
       toast.success('Vault renamed')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to rename')
-    } finally {
-      setRenaming(false)
-    }
+    } finally { setRenaming(false) }
   }
 
   async function handleDelete() {
@@ -68,96 +51,115 @@ export function VaultCard({ vault }: { vault: Vault }) {
       toast.success('Vault deleted')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete')
-    } finally {
-      setDeleting(false)
-    }
+    } finally { setDeleting(false) }
   }
 
   return (
     <>
-      <Card elevation={0} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <CardContent sx={{ flex: 1, pb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-            <Box sx={{ mt: 0.25, p: 1, borderRadius: 1.5, bgcolor: 'rgba(96,165,250,0.1)', color: '#60a5fa', flexShrink: 0 }}>
-              <Folder size={16} />
-            </Box>
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography variant="body2" noWrap color="text.primary" sx={{ fontWeight: 600 }}>
-                {vault.name}
-              </Typography>
+      <Card className="flex flex-col h-full group hover:border-zinc-600 dark:hover:border-zinc-600 transition-all hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/40">
+        <CardContent className="flex-1 p-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 p-2 rounded-lg bg-blue-400/10 text-blue-400 shrink-0 ring-1 ring-blue-400/20">
+              <Folder size={14} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground truncate">{vault.name}</p>
               {vault.description && (
-                <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.25 }}>
-                  {vault.description}
-                </Typography>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">{vault.description}</p>
               )}
-            </Box>
-            <IconButton size="small" onClick={e => setMenuAnchor(e.currentTarget)} sx={{ color: 'text.secondary', flexShrink: 0 }}>
-              <MoreHorizontal size={16} />
-            </IconButton>
-          </Box>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
+                  />
+                }
+              >
+                <MoreHorizontal size={13} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36">
+                <DropdownMenuItem
+                  onClick={() => { setNewName(vault.name); setRenameOpen(true) }}
+                  className="cursor-pointer"
+                >
+                  <Pencil size={12} className="mr-2" /> Rename
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setDeleteOpen(true)}
+                  variant="destructive"
+                  className="cursor-pointer"
+                >
+                  <Trash2 size={12} className="mr-2" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardContent>
 
-        <Divider sx={{ borderColor: '#27272a' }} />
+        <Separator />
 
-        <CardActions sx={{ px: 2, py: 1.25, justifyContent: 'space-between' }}>
-          <Typography variant="caption" sx={{ color: '#52525b' }}>{formatDate(vault.createdAt)}</Typography>
+        <CardFooter className="px-4 py-3 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground tabular-nums">{formatDate(vault.createdAt)}</span>
           <Button
-            component={Link}
-            href={`/dashboard/vaults/${vault.id}`}
-            size="small"
-            variant="outlined"
-            sx={{ borderColor: '#3f3f46', color: '#d4d4d8', '&:hover': { borderColor: '#71717a' }, py: 0.25, px: 1.5, fontSize: '0.75rem' }}
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs px-3 cursor-pointer"
+            render={<Link href={`/dashboard/vaults/${vault.id}`} />}
           >
             Open
           </Button>
-        </CardActions>
+        </CardFooter>
       </Card>
 
-      {/* Kebab menu */}
-      <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}
-        slotProps={{ paper: { sx: { bgcolor: '#1c1c1f', border: '1px solid #27272a', minWidth: 140 } } }}>
-        <MenuItem onClick={() => { setNewName(vault.name); setRenameOpen(true); setMenuAnchor(null) }} dense>
-          <ListItemIcon sx={{ color: 'text.secondary', minWidth: 28 }}><Pencil size={14} /></ListItemIcon>
-          <Typography variant="body2">Rename</Typography>
-        </MenuItem>
-        <Divider sx={{ borderColor: '#27272a', my: 0.5 }} />
-        <MenuItem onClick={() => { setDeleteOpen(true); setMenuAnchor(null) }} dense sx={{ color: '#f87171' }}>
-          <ListItemIcon sx={{ color: '#f87171', minWidth: 28 }}><Trash2 size={14} /></ListItemIcon>
-          <Typography variant="body2" color="inherit">Delete</Typography>
-        </MenuItem>
-      </Menu>
-
-      {/* Rename dialog */}
-      <Dialog open={renameOpen} onClose={() => setRenameOpen(false)} maxWidth="xs" fullWidth>
-        <form onSubmit={handleRename}>
-          <DialogTitle sx={{ fontSize: '1rem', fontWeight: 600 }}>Rename Vault</DialogTitle>
-          <DialogContent sx={{ pt: '8px !important' }}>
-            <TextField value={newName} onChange={e => setNewName(e.target.value)}
-              slotProps={{ htmlInput: { maxLength: 100 } }} autoFocus required fullWidth size="small" />
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setRenameOpen(false)} variant="text" size="small" color="inherit">Cancel</Button>
-            <Button type="submit" variant="contained" size="small" disabled={renaming || !newName.trim()} disableElevation>
-              {renaming ? 'Saving…' : 'Save'}
-            </Button>
-          </DialogActions>
-        </form>
+      <Dialog open={renameOpen} onOpenChange={open => { if (!renaming) setRenameOpen(open) }}>
+        <DialogContent className="max-w-sm">
+          <form onSubmit={handleRename}>
+            <DialogHeader>
+              <DialogTitle>Rename Vault</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                maxLength={100}
+                autoFocus
+                required
+                className="text-sm"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setRenameOpen(false)} disabled={renaming}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={renaming || !newName.trim()}>
+                {renaming ? 'Saving…' : 'Save'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
       </Dialog>
 
-      {/* Delete dialog */}
-      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontSize: '1rem', fontWeight: 600 }}>Delete &quot;{vault.name}&quot;?</DialogTitle>
-        <DialogContent>
-          <DialogContentText variant="body2">
-            This will permanently delete the vault and all its files. This action cannot be undone.
-          </DialogContentText>
+      <Dialog open={deleteOpen} onOpenChange={open => { if (!deleting) setDeleteOpen(open) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete &quot;{vault.name}&quot;?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the vault and all its files. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting…' : 'Delete Vault'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteOpen(false)} variant="text" size="small" color="inherit">Cancel</Button>
-          <Button onClick={handleDelete} variant="contained" color="error" size="small" disabled={deleting} disableElevation>
-            {deleting ? 'Deleting…' : 'Delete Vault'}
-          </Button>
-        </DialogActions>
       </Dialog>
     </>
   )

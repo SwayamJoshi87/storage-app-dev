@@ -4,155 +4,104 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { LayoutDashboard, ArchiveRestore, Settings, Snowflake, Menu } from 'lucide-react'
-import AppBar from '@mui/material/AppBar'
-import Box from '@mui/material/Box'
-import Drawer from '@mui/material/Drawer'
-import IconButton from '@mui/material/IconButton'
-import List from '@mui/material/List'
-import ListItem from '@mui/material/ListItem'
-import ListItemButton from '@mui/material/ListItemButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import ListItemText from '@mui/material/ListItemText'
-import Toolbar from '@mui/material/Toolbar'
-import Typography from '@mui/material/Typography'
-import Divider from '@mui/material/Divider'
-
-const DRAWER_WIDTH = 220
+import { useTheme } from 'next-themes'
+import { LayoutDashboard, ArchiveRestore, Settings, Snowflake, Menu, FolderInput, Sun, Moon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
-  { href: '/dashboard',             label: 'Vaults',      icon: LayoutDashboard },
-  { href: '/dashboard/retrievals',  label: 'Retrievals',  icon: ArchiveRestore  },
-  { href: '/dashboard/settings',    label: 'Settings',    icon: Settings        },
+  { href: '/dashboard',            label: 'Vaults',     icon: LayoutDashboard },
+  { href: '/dashboard/retrievals', label: 'Restores',   icon: ArchiveRestore  },
+  { href: '/dashboard/import',     label: 'Import',     icon: FolderInput     },
+  { href: '/dashboard/settings',   label: 'Settings',   icon: Settings        },
 ]
+
+function NavItem({ href, label, icon: Icon, pathname }: {
+  href: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; pathname: string
+}) {
+  const active = href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors relative',
+        active
+          ? 'bg-zinc-800/60 text-foreground font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-0.5 before:rounded-full before:bg-blue-400'
+          : 'text-muted-foreground hover:bg-zinc-800/30 hover:text-foreground dark:hover:bg-white/5',
+      )}
+    >
+      <Icon size={15} className="shrink-0" />
+      {label}
+    </Link>
+  )
+}
 
 function SidebarContent({ pathname }: { pathname: string }) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Logo */}
-      <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Snowflake size={18} color="#60a5fa" />
-        <Typography
-          component={Link}
+    <div className="flex flex-col h-full bg-sidebar">
+      <div className="px-4 py-3.5 flex items-center gap-2 shrink-0">
+        <Snowflake size={15} className="text-blue-400 shrink-0" />
+        <Link
           href="/dashboard"
-          variant="body1"
-          sx={{ fontWeight: 600, color: '#f4f4f5', textDecoration: 'none', letterSpacing: '-0.01em' }}
+          className="text-sm font-semibold tracking-tight text-foreground hover:text-foreground"
         >
           Archivault
-        </Typography>
-      </Box>
-
-      <Divider sx={{ borderColor: '#27272a' }} />
-
-      <List sx={{ flex: 1, px: 1, py: 1 }} disablePadding>
-        {NAV_LINKS.map(({ href, label, icon: Icon }) => {
-          const active = href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
-          return (
-            <ListItem key={href} disablePadding sx={{ mb: 0.25 }}>
-              <ListItemButton
-                component={Link}
-                href={href}
-                selected={active}
-                sx={{
-                  borderRadius: 1.5,
-                  py: 1,
-                  px: 1.5,
-                  '&.Mui-selected': { bgcolor: '#27272a', color: '#f4f4f5' },
-                  '&.Mui-selected:hover': { bgcolor: '#3f3f46' },
-                  '&:hover': { bgcolor: 'rgba(39,39,42,0.5)' },
-                  color: active ? '#f4f4f5' : '#71717a',
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>
-                  <Icon size={16} />
-                </ListItemIcon>
-                <ListItemText
-                  primary={label}
-                  slotProps={{ primary: { sx: { fontSize: '0.875rem', fontWeight: active ? 500 : 400 } } }}
-                />
-              </ListItemButton>
-            </ListItem>
-          )
-        })}
-      </List>
-    </Box>
+        </Link>
+      </div>
+      <div className="h-px bg-border mx-3" />
+      <nav className="flex-1 p-2 space-y-0.5 mt-1">
+        {NAV_LINKS.map(link => (
+          <NavItem key={link.href} {...link} pathname={pathname} />
+        ))}
+      </nav>
+    </div>
   )
 }
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const [mobileOpen, setMobileOpen] = useState(false)
-
-  const drawerContent = <SidebarContent pathname={pathname} />
+  const { theme, setTheme } = useTheme()
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Desktop permanent drawer */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          display: { xs: 'none', lg: 'block' },
-          width: DRAWER_WIDTH,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: DRAWER_WIDTH,
-            bgcolor: 'background.default',
-            borderRight: '1px solid #27272a',
-            boxSizing: 'border-box',
-          },
-        }}
-      >
-        {drawerContent}
-      </Drawer>
-
-      {/* Mobile temporary drawer */}
-      <Drawer
-        variant="temporary"
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        ModalProps={{ keepMounted: true }}
-        sx={{
-          display: { xs: 'block', lg: 'none' },
-          '& .MuiDrawer-paper': {
-            width: DRAWER_WIDTH,
-            bgcolor: 'background.default',
-            borderRight: '1px solid #27272a',
-          },
-        }}
-      >
-        {drawerContent}
-      </Drawer>
+    <div className="flex min-h-screen bg-background">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-[220px] shrink-0 flex-col border-r border-border">
+        <SidebarContent pathname={pathname} />
+      </aside>
 
       {/* Main area */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Topbar */}
-        <AppBar
-          position="static"
-          elevation={0}
-          sx={{
-            bgcolor: 'background.default',
-            borderBottom: '1px solid #27272a',
-            color: 'text.primary',
-          }}
-        >
-          <Toolbar sx={{ minHeight: '56px !important', px: 2, gap: 1 }}>
-            <IconButton
-              onClick={() => setMobileOpen(true)}
-              sx={{ display: { lg: 'none' }, color: 'text.secondary' }}
-              size="small"
-            >
-              <Menu size={18} />
-            </IconButton>
-            <Box sx={{ flex: 1 }} />
-            <UserButton />
-          </Toolbar>
-        </AppBar>
+        <header className="flex items-center h-14 px-4 border-b border-border shrink-0 gap-2">
+          <Sheet>
+            <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden h-8 w-8 text-muted-foreground" />}>
+              <Menu size={16} />
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[220px] p-0">
+              <SidebarContent pathname={pathname} />
+            </SheetContent>
+          </Sheet>
 
-        {/* Page content */}
-        <Box component="main" sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+          <div className="flex-1" />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground"
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            aria-label="Toggle theme"
+          >
+            <Sun size={15} className="dark:hidden" />
+            <Moon size={15} className="hidden dark:block" />
+          </Button>
+          <UserButton />
+        </header>
+
+        <main className="flex-1 overflow-auto p-6">
           {children}
-        </Box>
-      </Box>
-    </Box>
+        </main>
+      </div>
+    </div>
   )
 }

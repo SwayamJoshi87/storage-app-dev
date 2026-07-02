@@ -100,6 +100,23 @@ export class S3GlacierProvider implements IStorageProvider {
     }))
   }
 
+  async putObjectFromStream(
+    key: string,
+    stream: import('stream').Readable,
+    contentType: string,
+    sizeBytes: number,
+    tier: 'cold' | 'hot',
+  ): Promise<void> {
+    await this.s3.send(new PutObjectCommand({
+      Bucket: this.requireBucket(),
+      Key: key,
+      Body: stream,
+      ContentType: contentType,
+      ContentLength: sizeBytes,
+      StorageClass: tier === 'cold' ? 'DEEP_ARCHIVE' : 'STANDARD_IA',
+    }))
+  }
+
   async deleteObject(key: string): Promise<void> {
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.requireBucket(), Key: key }))
   }

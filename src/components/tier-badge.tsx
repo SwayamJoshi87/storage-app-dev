@@ -1,16 +1,17 @@
-import Chip from '@mui/material/Chip'
+import { cn, badgeBase } from '@/lib/utils'
 import type { StorageTier } from '@/server/types'
 
 export function TierBadge({ tier }: { tier: StorageTier }) {
   return (
-    <Chip
-      label={tier}
-      size="small"
-      sx={
+    <span
+      className={cn(
+        badgeBase,
         tier === 'cold'
-          ? { bgcolor: 'rgba(96,165,250,0.1)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.2)', fontSize: '0.7rem', height: 22, textTransform: 'capitalize' }
-          : { bgcolor: 'rgba(251,191,36,0.1)',  color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)',  fontSize: '0.7rem', height: 22, textTransform: 'capitalize' }
-      }
-    />
+          ? 'bg-blue-400/10 text-blue-400 border-blue-400/20'
+          : 'bg-amber-400/10 text-amber-400 border-amber-400/20',
+      )}
+    >
+      {tier === 'cold' ? 'Archive' : 'Instant'}
+    </span>
   )
 }

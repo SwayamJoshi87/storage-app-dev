@@ -1,13 +1,13 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
 import { ChevronLeft, FileIcon } from 'lucide-react'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Typography from '@mui/material/Typography'
+import { Button } from '@/components/ui/button'
 import { vaultService, fileService } from '@/server/container'
 import { UploadZone } from '@/components/upload-zone'
 import { FileTable } from '@/components/file-table'
 import { EmptyState } from '@/components/empty-state'
+import { SectionLabel } from '@/components/section-label'
 
 interface PageProps {
   params: Promise<{ vaultId: string }>
@@ -29,50 +29,42 @@ export default async function VaultPage({ params }: PageProps) {
   const activeFiles = files.filter(f => f.status !== 'deleted')
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Button
-          href="/dashboard"
-          variant="text"
-          size="small"
-          startIcon={<ChevronLeft size={16} />}
-          sx={{ color: '#71717a', minWidth: 0, px: 0.5, '&:hover': { color: '#d4d4d8', bgcolor: 'transparent' } }}
-        >
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-foreground -ml-2" render={<Link href="/dashboard" />}>
+          <ChevronLeft size={15} />
           Back
         </Button>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>{vault.name}</Typography>
-      </Box>
+        <span className="text-muted-foreground/40">/</span>
+        <h1 className="text-base font-semibold truncate">{vault.name}</h1>
+      </div>
 
       {vault.description && (
-        <Typography variant="body2" color="text.secondary">{vault.description}</Typography>
+        <p className="text-sm text-muted-foreground">{vault.description}</p>
       )}
 
-      <Box>
-        <Typography variant="caption" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a', display: 'block', mb: 1.5 }}>
-          Upload Files
-        </Typography>
+      <div className="space-y-2">
+        <SectionLabel>Upload Files</SectionLabel>
         <UploadZone vaultId={vaultId} />
-      </Box>
+      </div>
 
-      <Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-          <Typography variant="caption" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>
-            Files
-          </Typography>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <SectionLabel>Files</SectionLabel>
           {activeFiles.length > 0 && (
-            <Typography variant="caption" sx={{ color: '#3f3f46' }}>({activeFiles.length})</Typography>
+            <span className="text-xs text-muted-foreground/50">({activeFiles.length})</span>
           )}
-        </Box>
+        </div>
         {activeFiles.length === 0 ? (
           <EmptyState
-            icon={<FileIcon size={32} />}
+            icon={<FileIcon size={18} />}
             title="No files yet"
-            description="Upload files above to archive them in cold storage."
+            description="Upload files above to start archiving."
           />
         ) : (
           <FileTable files={activeFiles} />
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   )
 }

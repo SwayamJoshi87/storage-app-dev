@@ -24,9 +24,11 @@ CREATE TYPE "storage_tier" AS ENUM (
 
 CREATE TYPE "file_status" AS ENUM (
   'pending_upload',
+  'importing',
   'active',
   'restoring',
   'ready',
+  'failed',
   'deleted'
 );
 
@@ -55,7 +57,13 @@ CREATE TABLE "users" (
   "hot_storage_used_bytes"      integer     NOT NULL DEFAULT 0,
   "retrievals_used_this_month"  integer     NOT NULL DEFAULT 0,
   "retrievals_reset_at"         timestamp   NOT NULL DEFAULT now(),
-  "created_at"                  timestamp   NOT NULL DEFAULT now(),
+  "google_access_token"          text,
+  "google_refresh_token"         text,
+  "google_token_expiry"          timestamp,
+  "onedrive_access_token"        text,
+  "onedrive_refresh_token"       text,
+  "onedrive_token_expiry"        timestamp,
+  "created_at"                   timestamp   NOT NULL DEFAULT now(),
   "updated_at"                  timestamp   NOT NULL DEFAULT now()
 );
 
@@ -80,7 +88,9 @@ CREATE TABLE "files" (
   "tier"             "storage_tier" NOT NULL DEFAULT 'cold',
   "status"           "file_status"  NOT NULL DEFAULT 'pending_upload',
   "checksum_sha256"  text,
-  "created_at"       timestamp      NOT NULL DEFAULT now(),
+  "google_drive_file_id"    text,
+  "onedrive_drive_item_id"  text,
+  "created_at"              timestamp      NOT NULL DEFAULT now(),
   "updated_at"       timestamp      NOT NULL DEFAULT now()
 );
 

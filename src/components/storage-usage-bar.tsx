@@ -1,7 +1,5 @@
-import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
-import LinearProgress from '@mui/material/LinearProgress'
-import Typography from '@mui/material/Typography'
+import { Progress } from '@/components/ui/progress'
+import { cn, formatBytes } from '@/lib/utils'
 
 const PLAN_LIMITS = {
   free:     { coldBytes: 25  * 1024 ** 3, hotBytes: 0 },
@@ -11,37 +9,30 @@ const PLAN_LIMITS = {
   power:    { coldBytes: 50  * 1024 ** 4, hotBytes: 500 * 1024 ** 3 },
 } as const
 
-function formatBytes(bytes: number) {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
 interface UsageRowProps {
   label: string
   usedBytes: number
   limitBytes: number
-  color: string
+  colorClass: string
 }
 
-function UsageRow({ label, usedBytes, limitBytes, color }: UsageRowProps) {
+function UsageRow({ label, usedBytes, limitBytes, colorClass }: UsageRowProps) {
   const pct = limitBytes > 0 ? Math.min(100, (usedBytes / limitBytes) * 100) : 0
+  const isWarning = pct >= 80
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
-        <Typography variant="caption" color="text.secondary">{label}</Typography>
-        <Typography variant="caption" color="#52525b" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className={cn('tabular-nums font-mono', isWarning ? 'text-amber-400' : 'text-muted-foreground')}>
           {formatBytes(usedBytes)} / {formatBytes(limitBytes)}
-        </Typography>
-      </Box>
-      <LinearProgress
-        variant="determinate"
+          {isWarning && <span className="ml-1.5 text-amber-400">({Math.round(pct)}%)</span>}
+        </span>
+      </div>
+      <Progress
         value={pct}
-        sx={{ '& .MuiLinearProgress-bar': { bgcolor: color } }}
+        className={cn('h-1.5', isWarning ? '[&>div]:bg-amber-400' : colorClass)}
       />
-    </Box>
+    </div>
   )
 }
 
@@ -54,17 +45,29 @@ interface StorageUsageBarProps {
 export function StorageUsageBar({ plan = 'free', coldUsedBytes = 0, hotUsedBytes = 0 }: StorageUsageBarProps) {
   const limits = PLAN_LIMITS[plan]
   return (
-    <Box sx={{ border: '1px solid #27272a', borderRadius: 2, bgcolor: 'background.paper', p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="caption" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>
+    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Storage Usage
-        </Typography>
-        <Chip label={plan} size="small" sx={{ bgcolor: '#27272a', color: '#a1a1aa', fontSize: '0.7rem', height: 20, textTransform: 'capitalize' }} />
-      </Box>
-      <UsageRow label="Cold Storage" usedBytes={coldUsedBytes} limitBytes={limits.coldBytes} color="#60a5fa" />
+        </span>
+        <span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground capitalize bg-muted/40">
+          {plan}
+        </span>
+      </div>
+      <UsageRow
+        label="Archive"
+        usedBytes={coldUsedBytes}
+        limitBytes={limits.coldBytes}
+        colorClass="[&>div]:bg-blue-400"
+      />
       {limits.hotBytes > 0 && (
-        <UsageRow label="Hot Storage" usedBytes={hotUsedBytes} limitBytes={limits.hotBytes} color="#fbbf24" />
+        <UsageRow
+          label="Instant Access"
+          usedBytes={hotUsedBytes}
+          limitBytes={limits.hotBytes}
+          colorClass="[&>div]:bg-amber-400"
+        />
       )}
-    </Box>
+    </div>
   )
 }

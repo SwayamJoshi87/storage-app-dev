@@ -12,6 +12,12 @@ export const users = pgTable('users', {
   hotStorageUsedBytes: integer('hot_storage_used_bytes').notNull().default(0),
   retrievalsUsedThisMonth: integer('retrievals_used_this_month').notNull().default(0),
   retrievalsResetAt: timestamp('retrievals_reset_at').notNull().defaultNow(),
+  googleAccessToken: text('google_access_token'),
+  googleRefreshToken: text('google_refresh_token'),
+  googleTokenExpiry: timestamp('google_token_expiry'),
+  onedriveAccessToken: text('onedrive_access_token'),
+  onedriveRefreshToken: text('onedrive_refresh_token'),
+  onedriveTokenExpiry: timestamp('onedrive_token_expiry'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })

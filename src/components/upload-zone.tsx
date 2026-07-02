@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { UploadCloud, X, Check, Loader } from 'lucide-react'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import LinearProgress from '@mui/material/LinearProgress'
-import Typography from '@mui/material/Typography'
+import { UploadCloud, X, Check, Loader2 } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+import { cn, formatBytes } from '@/lib/utils'
 
 interface UploadItem {
   file: File
@@ -16,18 +15,10 @@ interface UploadItem {
   error?: string
 }
 
-function formatBytes(bytes: number) {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
-function progressColor(status: UploadItem['status']) {
-  if (status === 'error') return '#f87171'
-  if (status === 'done') return '#34d399'
-  return '#60a5fa'
+function statusColor(status: UploadItem['status']) {
+  if (status === 'error') return '[&>div]:bg-red-400'
+  if (status === 'done') return '[&>div]:bg-emerald-400'
+  return '[&>div]:bg-blue-400'
 }
 
 export function UploadZone({ vaultId }: { vaultId: string }) {
@@ -66,12 +57,17 @@ export function UploadZone({ vaultId }: { vaultId: string }) {
 
       updateItem(index, { status: 'confirming', progress: 80 })
 
-      const confirmRes = await fetch(`/api/files/${fileRecord.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'confirm_upload' }) })
+      const confirmRes = await fetch(`/api/files/${fileRecord.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'confirm_upload' }),
+      })
       if (!confirmRes.ok) throw new Error('Failed to confirm upload')
 
       updateItem(index, { status: 'done', progress: 100 })
     } catch (err) {
       updateItem(index, { status: 'error', error: err instanceof Error ? err.message : 'Upload failed' })
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
     }
   }
 
@@ -79,83 +75,73 @@ export function UploadZone({ vaultId }: { vaultId: string }) {
     const fileArray = Array.from(files)
     const startIndex = items.length
     setItems(prev => [...prev, ...fileArray.map(f => ({ file: f, status: 'queued' as const, progress: 0 }))])
-    for (let i = 0; i < fileArray.length; i++) await uploadFile(fileArray[i], startIndex + i)
+    await Promise.all(fileArray.map((file, i) => uploadFile(file, startIndex + i)))
     router.refresh()
   }
 
-  const onDrop = useCallback((e: React.DragEvent) => {
+  function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragging(false)
     if (e.dataTransfer.files.length > 0) processFiles(e.dataTransfer.files)
-  }, [items])
+  }
 
   const allDone = items.length > 0 && items.every(it => it.status === 'done' || it.status === 'error')
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      {/* Drop zone */}
-      <Box
+    <div className="space-y-2">
+      <div
         onClick={() => inputRef.current?.click()}
         onDrop={onDrop}
         onDragOver={e => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
-        sx={{
-          cursor: 'pointer',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 1,
-          py: 5,
-          border: `2px dashed ${dragging ? '#60a5fa' : '#3f3f46'}`,
-          borderRadius: 2,
-          bgcolor: dragging ? 'rgba(96,165,250,0.04)' : 'transparent',
-          transition: 'border-color 0.15s, background-color 0.15s',
-          '&:hover': { borderColor: '#52525b', bgcolor: 'rgba(39,39,42,0.4)' },
-        }}
+        className={cn(
+          'flex flex-col items-center justify-center gap-2 py-10 rounded-lg border-2 border-dashed cursor-pointer transition-all',
+          dragging
+            ? 'border-blue-400 bg-blue-400/5'
+            : 'border-border hover:border-muted-foreground/40 hover:bg-muted/20',
+        )}
       >
-        <UploadCloud size={32} color="#52525b" />
-        <Typography variant="body2" color="text.secondary">
-          Drag files here or <Box component="span" sx={{ color: '#60a5fa', textDecoration: 'underline' }}>browse</Box>
-        </Typography>
-        <Typography variant="caption" color="#3f3f46">Files are stored in S3 Glacier Deep Archive</Typography>
-        <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={e => e.target.files && processFiles(e.target.files)} />
-      </Box>
+        <UploadCloud size={28} className={cn('transition-colors', dragging ? 'text-blue-400' : 'text-muted-foreground')} />
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            Drag files here or{' '}
+            <span className="text-primary underline underline-offset-2">browse</span>
+          </p>
+          <p className="text-xs text-muted-foreground/60 mt-0.5">Stored in deep archive</p>
+        </div>
+        <input ref={inputRef} type="file" multiple className="hidden" onChange={e => e.target.files && processFiles(e.target.files)} />
+      </div>
 
-      {/* Upload list */}
       {items.map((item, i) => (
-        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, border: '1px solid #27272a', borderRadius: 1.5, px: 1.5, py: 1, bgcolor: 'background.paper' }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{item.file.name}</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-              <LinearProgress
-                variant="determinate"
-                value={item.progress}
-                sx={{ flex: 1, '& .MuiLinearProgress-bar': { bgcolor: progressColor(item.status) } }}
-              />
-              <Typography variant="caption" sx={{ color: '#52525b', minWidth: 48, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+        <div
+          key={i}
+          className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2"
+        >
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground truncate">{item.file.name}</span>
+              <span className="text-xs text-muted-foreground font-mono tabular-nums shrink-0">
                 {formatBytes(item.file.size)}
-              </Typography>
-            </Box>
-            {item.error && <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.25 }}>{item.error}</Typography>}
-          </Box>
-          <Box sx={{ flexShrink: 0, color: progressColor(item.status) }}>
-            {item.status === 'done' && <Check size={16} />}
-            {item.status === 'error' && <X size={16} />}
+              </span>
+            </div>
+            <Progress value={item.progress} className={cn('h-1', statusColor(item.status))} />
+            {item.error && <p className="text-xs text-red-400">{item.error}</p>}
+          </div>
+          <div className="shrink-0">
+            {item.status === 'done' && <Check size={14} className="text-emerald-400" />}
+            {item.status === 'error' && <X size={14} className="text-red-400" />}
             {(item.status === 'uploading' || item.status === 'confirming') && (
-              <Box sx={{ animation: 'spin 1s linear infinite', '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } } }}>
-                <Loader size={16} />
-              </Box>
+              <Loader2 size={14} className="text-blue-400 animate-spin" />
             )}
-          </Box>
-        </Box>
+          </div>
+        </div>
       ))}
 
       {allDone && (
-        <Button variant="text" size="small" onClick={() => setItems([])} sx={{ alignSelf: 'flex-start', color: '#52525b', fontSize: '0.75rem' }}>
+        <Button variant="ghost" size="sm" onClick={() => setItems([])} className="text-muted-foreground text-xs h-7">
           Clear
         </Button>
       )}
-    </Box>
+    </div>
   )
 }

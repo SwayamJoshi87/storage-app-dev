@@ -4,13 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogContentText from '@mui/material/DialogContentText'
-import DialogTitle from '@mui/material/DialogTitle'
-import TextField from '@mui/material/TextField'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export function CreateVaultDialog() {
   const router = useRouter()
@@ -48,56 +45,53 @@ export function CreateVaultDialog() {
   }
 
   return (
-    <>
-      <Button
-        variant="contained"
-        size="small"
-        startIcon={<Plus size={14} />}
-        onClick={() => setOpen(true)}
-        disableElevation
-      >
+    <Dialog open={open} onOpenChange={open => { if (!loading) setOpen(open) }}>
+      <DialogTrigger render={<Button size="sm" className="gap-1.5 cursor-pointer" />}>
+        <Plus size={14} />
         New Vault
-      </Button>
-
-      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
         <form onSubmit={handleSubmit}>
-          <DialogTitle sx={{ fontSize: '1rem', fontWeight: 600 }}>Create Vault</DialogTitle>
-          <DialogContent sx={{ pt: '8px !important' }}>
-            <DialogContentText variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-              A vault is a container for related files stored in cold storage.
-            </DialogContentText>
-            <TextField
-              label="Name"
-              placeholder="e.g. Family Photos 2024"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              slotProps={{ htmlInput: { maxLength: 100 } }}
-              required
-              autoFocus
-              fullWidth
-              size="small"
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              label="Description"
-              placeholder="Optional"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              slotProps={{ htmlInput: { maxLength: 500 } }}
-              fullWidth
-              size="small"
-            />
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={handleClose} variant="text" size="small" color="inherit" disabled={loading}>
+          <DialogHeader>
+            <DialogTitle>Create Vault</DialogTitle>
+            <DialogDescription>
+              A vault is a container for related files you want to archive.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="vault-name" className="text-xs">Name</Label>
+              <Input
+                id="vault-name"
+                placeholder="e.g. Family Photos 2024"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                maxLength={100}
+                autoFocus
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="vault-desc" className="text-xs">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                id="vault-desc"
+                placeholder="What's in this vault?"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" size="sm" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" variant="contained" size="small" disabled={loading || !name.trim()} disableElevation>
+            <Button type="submit" size="sm" disabled={loading || !name.trim()}>
               {loading ? 'Creating…' : 'Create Vault'}
             </Button>
-          </DialogActions>
+          </DialogFooter>
         </form>
-      </Dialog>
-    </>
+      </DialogContent>
+    </Dialog>
   )
 }

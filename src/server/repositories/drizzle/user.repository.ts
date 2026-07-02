@@ -38,4 +38,28 @@ export class DrizzleUserRepository implements IUserRepository {
       .returning()
     return rows[0]
   }
+
+  async updateGoogleTokens(
+    id: string,
+    tokens: { googleAccessToken: string; googleRefreshToken: string; googleTokenExpiry: Date },
+  ): Promise<User> {
+    const rows = await db
+      .update(users)
+      .set({ ...tokens, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning()
+    return rows[0]
+  }
+
+  async updateOnedriveTokens(
+    id: string,
+    tokens: { onedriveAccessToken: string; onedriveRefreshToken: string; onedriveTokenExpiry: Date },
+  ): Promise<User> {
+    const rows = await db
+      .update(users)
+      .set({ ...tokens, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning()
+    return rows[0]
+  }
 }

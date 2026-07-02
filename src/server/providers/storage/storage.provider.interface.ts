@@ -1,3 +1,4 @@
+import type { Readable } from 'stream'
 import type { FileMetadata, RetrievalTier, RetrievalStatus, StorageTier, UploadTarget } from '../../types'
 
 export interface IStorageProvider {
@@ -22,6 +23,9 @@ export interface IStorageProvider {
 
   /** Upload object content directly (server-side, bypasses CORS) */
   putObject(key: string, body: Buffer, contentType: string, tier: 'cold' | 'hot'): Promise<void>
+
+  /** Stream object content directly to S3 without buffering to disk */
+  putObjectFromStream(key: string, stream: Readable, contentType: string, sizeBytes: number, tier: 'cold' | 'hot'): Promise<void>
 
   /** Delete an object from storage */
   deleteObject(key: string): Promise<void>

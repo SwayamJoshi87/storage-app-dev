@@ -1,4 +1,4 @@
-import { eq, and, sum } from 'drizzle-orm'
+import { eq, and, sum, isNotNull, desc } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { files } from '@/db/schema/files'
 import type { File, NewFile } from '@/db/schema/files'
@@ -20,6 +20,24 @@ export class DrizzleFileRepository implements IFileRepository {
 
   async findByUserId(userId: string): Promise<File[]> {
     return db.select().from(files).where(eq(files.userId, userId)).orderBy(files.createdAt)
+  }
+
+  async findGoogleDriveImportsByUserId(userId: string): Promise<File[]> {
+    return db
+      .select()
+      .from(files)
+      .where(and(eq(files.userId, userId), isNotNull(files.googleDriveFileId)))
+      .orderBy(desc(files.createdAt))
+      .limit(100)
+  }
+
+  async findOneDriveImportsByUserId(userId: string): Promise<File[]> {
+    return db
+      .select()
+      .from(files)
+      .where(and(eq(files.userId, userId), isNotNull(files.onedriveDriveItemId)))
+      .orderBy(desc(files.createdAt))
+      .limit(100)
   }
 
   async create(file: NewFile): Promise<File> {

@@ -6,10 +6,14 @@ import { S3GlacierProvider } from './providers/storage/s3-glacier.provider'
 import { UpstashQueueProvider } from './providers/queue/upstash.provider'
 import { ResendEmailProvider } from './providers/email/resend.provider'
 import { StripeProvider } from './providers/billing/stripe.provider'
+import { GDriveProvider } from './providers/gdrive/gdrive.provider'
+import { OneDriveProvider } from './providers/onedrive/onedrive.provider'
 import { VaultService } from './services/vault.service'
 import { FileService } from './services/file.service'
 import { RetrievalService } from './services/retrieval.service'
 import { BillingService } from './services/billing.service'
+import { ImportService } from './services/import.service'
+import { OneDriveImportService } from './services/onedrive-import.service'
 
 // Singletons — safe in serverless since modules are cached per instance
 const userRepo = new DrizzleUserRepository()
@@ -20,6 +24,8 @@ const storageProvider = new S3GlacierProvider()
 const queueProvider = new UpstashQueueProvider()
 const emailProvider = new ResendEmailProvider()
 const stripeProvider = new StripeProvider()
+const gdriveProvider = new GDriveProvider()
+const onedriveProvider = new OneDriveProvider()
 
 export { userRepo }
 export const vaultService = new VaultService(vaultRepo, fileRepo, storageProvider)
@@ -33,3 +39,19 @@ export const retrievalService = new RetrievalService(
   emailProvider,
 )
 export const billingService = new BillingService(stripeProvider, userRepo)
+export const importService = new ImportService(
+  fileRepo,
+  vaultRepo,
+  userRepo,
+  storageProvider,
+  queueProvider,
+  gdriveProvider,
+)
+export const onedriveImportService = new OneDriveImportService(
+  fileRepo,
+  vaultRepo,
+  userRepo,
+  storageProvider,
+  queueProvider,
+  onedriveProvider,
+)

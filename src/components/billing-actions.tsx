@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Button from '@mui/material/Button'
+import { Button } from '@/components/ui/button'
 import type { Plan } from '@/server/services/billing.service'
 
 type UpgradeButtonProps = {
@@ -12,6 +12,7 @@ type UpgradeButtonProps = {
 
 export function UpgradeButton({ plan, label, currentPlan }: UpgradeButtonProps) {
   const [loading, setLoading] = useState(false)
+  const isCurrentPlan = plan === currentPlan
 
   async function handleClick() {
     setLoading(true)
@@ -28,21 +29,15 @@ export function UpgradeButton({ plan, label, currentPlan }: UpgradeButtonProps) 
     }
   }
 
-  const isCurrentPlan = plan === currentPlan
-
   return (
     <Button
-      size="small"
-      variant={isCurrentPlan ? 'outlined' : 'contained'}
+      size="sm"
+      variant={isCurrentPlan ? 'outline' : 'default'}
       disabled={isCurrentPlan || loading}
       onClick={handleClick}
-      disableElevation
-      sx={isCurrentPlan
-        ? { borderColor: 'rgba(96,165,250,0.3)', color: '#60a5fa', fontSize: '0.75rem', py: 0.25, px: 1.5 }
-        : { fontSize: '0.75rem', py: 0.25, px: 1.5 }
-      }
+      className="h-7 text-xs px-3 cursor-pointer"
     >
-      {loading ? 'Redirecting…' : isCurrentPlan ? 'Current' : `Upgrade`}
+      {loading ? 'Redirecting…' : isCurrentPlan ? 'Current' : 'Upgrade'}
     </Button>
   )
 }
@@ -69,11 +64,11 @@ export function ManageBillingButton({ hasSubscription }: ManageBillingButtonProp
 
   return (
     <Button
-      variant="outlined"
-      size="small"
+      variant="outline"
+      size="sm"
       onClick={handleClick}
       disabled={loading}
-      sx={{ borderColor: '#3f3f46', color: '#d4d4d8', '&:hover': { borderColor: '#71717a' }, fontSize: '0.75rem', py: 0.25, px: 1.5 }}
+      className="h-7 text-xs px-3 cursor-pointer"
     >
       {loading ? 'Redirecting…' : 'Manage Billing'}
     </Button>

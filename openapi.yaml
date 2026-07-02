@@ -35,6 +35,8 @@ tags:
     description: Glacier restore requests
   - name: Billing
     description: Stripe subscription management
+  - name: Import
+    description: Import files from Google Drive or OneDrive into cold storage
   - name: Webhooks
     description: Internal — called by Upstash QStash or Stripe (signed requests only)
 
@@ -253,6 +255,215 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  # ── Import ───────────────────────────────────────────────────────────────────
+
+  /api/auth/google:
+    get:
+      operationId: initiateGoogleOAuth
+      tags: [Import]
+      summary: Redirect to Google OAuth consent screen (read-only Drive scope)
+      description: |
+        Initiates the Google OAuth 2.0 flow. Redirects the user to Google's consent
+        screen with `drive.readonly` scope. After consent, Google redirects to
+        `/api/auth/google/callback`.
+      responses:
+        '302':
+          description: Redirect to Google OAuth
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/google/callback:
+    get:
+      operationId: googleOAuthCallback
+      tags: [Import]
+      summary: Handle Google OAuth callback — stores tokens and redirects to import page
+      description: |
+        Exchanges the authorization code for access + refresh tokens and stores
+        them against the authenticated user. Redirects to `/dashboard/import/google`.
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: error
+          in: query
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to import page
+
+  /api/import/google:
+    get:
+      operationId: listGoogleDriveFiles
+      tags: [Import]
+      summary: List files and folders in the user's Google Drive
+      parameters:
+        - name: folderId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Google Drive folder ID (omit for root)
+      responses:
+        '200':
+          description: Array of Drive items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DriveItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Google Drive not connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      operationId: enqueueGoogleDriveImport
+      tags: [Import]
+      summary: Enqueue selected Drive files for import into a vault
+      description: |
+        Creates a `files` record with status `importing` for each selected file and
+        enqueues a QStash background job that streams the file from Google Drive to S3
+        Glacier Deep Archive.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleImportRequest'
+      responses:
+        '201':
+          description: Jobs queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleImportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/import/google/status:
+    get:
+      operationId: getGoogleDriveImportStatus
+      tags: [Import]
+      summary: Get status of all Google Drive import jobs for the authenticated user
+      description: |
+        Returns all files that were imported from Google Drive, newest first.
+        Poll this endpoint every 10 seconds to update the import progress UI.
+      responses:
+        '200':
+          description: Array of file records (may include importing, active, or failed)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/onedrive:
+    get:
+      operationId: initiateOneDriveOAuth
+      tags: [Import]
+      summary: Redirect to Microsoft OAuth consent screen (Files.Read scope)
+      responses:
+        '302':
+          description: Redirect to Microsoft login
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/onedrive/callback:
+    get:
+      operationId: oneDriveOAuthCallback
+      tags: [Import]
+      summary: Handle Microsoft OAuth callback — stores tokens and redirects to import page
+      parameters:
+        - name: code
+          in: query
+          schema: { type: string }
+        - name: error
+          in: query
+          schema: { type: string }
+      responses:
+        '302':
+          description: Redirect to OneDrive import page
+
+  /api/import/onedrive:
+    get:
+      operationId: listOneDriveItems
+      tags: [Import]
+      summary: List files and folders in the user's OneDrive
+      parameters:
+        - name: itemId
+          in: query
+          required: false
+          schema: { type: string }
+          description: OneDrive item ID (omit for root)
+      responses:
+        '200':
+          description: Array of OneDrive items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OneDriveItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: OneDrive not connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      operationId: enqueueOneDriveImport
+      tags: [Import]
+      summary: Enqueue selected OneDrive items for import into a vault
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OneDriveImportRequest'
+      responses:
+        '201':
+          description: Jobs queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OneDriveImportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/import/onedrive/status:
+    get:
+      operationId: getOneDriveImportStatus
+      tags: [Import]
+      summary: Get status of all OneDrive import jobs for the authenticated user
+      responses:
+        '200':
+          description: Array of file records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # ── Billing ──────────────────────────────────────────────────────────────────
 
   /api/billing/checkout:
@@ -333,6 +544,76 @@ paths:
                 type: object
                 properties:
                   received:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/webhooks/import-google:
+    post:
+      operationId: processGoogleDriveImportJob
+      tags: [Webhooks]
+      summary: Internal — stream a single Google Drive file to S3 Glacier (QStash signed)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileId, googleDriveFileId, userId]
+              properties:
+                fileId:
+                  type: string
+                googleDriveFileId:
+                  type: string
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Import job succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/webhooks/import-onedrive:
+    post:
+      operationId: processOneDriveImportJob
+      tags: [Webhooks]
+      summary: Internal — stream a single OneDrive file to S3 Glacier (QStash signed)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileId, onedriveItemId, userId]
+              properties:
+                fileId:
+                  type: string
+                onedriveItemId:
+                  type: string
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Import job succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
                     type: boolean
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -452,7 +733,7 @@ components:
 
     FileStatus:
       type: string
-      enum: [pending_upload, active, restoring, ready, deleted]
+      enum: [pending_upload, importing, active, restoring, ready, failed, deleted]
 
     RetrievalStatus:
       type: string
@@ -572,6 +853,102 @@ components:
           format: date-time
 
     # ── Request bodies ──────────────────────────────────────────────────────
+
+    DriveItem:
+      type: object
+      required: [id, name, mimeType, sizeBytes, isFolder, modifiedAt]
+      properties:
+        id:
+          type: string
+          description: Google Drive file/folder ID
+        name:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          description: 0 for folders
+        isFolder:
+          type: boolean
+        modifiedAt:
+          type: string
+          format: date-time
+
+    OneDriveItem:
+      type: object
+      required: [id, name, mimeType, sizeBytes, isFolder, modifiedAt]
+      properties:
+        id:
+          type: string
+          description: OneDrive item ID
+        name:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          description: 0 for folders
+        isFolder:
+          type: boolean
+        modifiedAt:
+          type: string
+          format: date-time
+
+    OneDriveImportRequest:
+      type: object
+      required: [vaultId, items]
+      properties:
+        vaultId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OneDriveItem'
+
+    OneDriveImportResponse:
+      type: object
+      required: [queued]
+      properties:
+        queued:
+          type: array
+          items:
+            type: object
+            required: [fileId, onedriveItemId]
+            properties:
+              fileId:
+                type: string
+              onedriveItemId:
+                type: string
+
+    GoogleImportRequest:
+      type: object
+      required: [vaultId, files]
+      properties:
+        vaultId:
+          type: string
+          description: Target vault ID
+        files:
+          type: array
+          description: Drive file items to import (folders are ignored)
+          items:
+            $ref: '#/components/schemas/DriveItem'
+
+    GoogleImportResponse:
+      type: object
+      required: [queued]
+      properties:
+        queued:
+          type: array
+          items:
+            type: object
+            required: [fileId, driveFileId]
+            properties:
+              fileId:
+                type: string
+              driveFileId:
+                type: string
 
     CreateVaultRequest:
       type: object

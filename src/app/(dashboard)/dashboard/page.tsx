@@ -1,9 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { FolderOpen } from 'lucide-react'
-import Box from '@mui/material/Box'
-import Grid from '@mui/material/Grid'
-import Typography from '@mui/material/Typography'
 import { vaultService, fileService, userRepo } from '@/server/container'
 import { VaultCard } from '@/components/vault-card'
 import { CreateVaultDialog } from '@/components/create-vault-dialog'
@@ -21,11 +18,11 @@ export default async function DashboardPage() {
   ])
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>My Vaults</Typography>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-base font-semibold">My Vaults</h1>
         <CreateVaultDialog />
-      </Box>
+      </div>
 
       <StorageUsageBar
         plan={(user?.plan ?? 'free') as 'free' | 'starter' | 'personal' | 'creator' | 'power'}
@@ -35,19 +32,17 @@ export default async function DashboardPage() {
 
       {vaults.length === 0 ? (
         <EmptyState
-          icon={<FolderOpen size={40} />}
+          icon={<FolderOpen size={20} />}
           title="No vaults yet"
-          description="Create a vault to start archiving your files to cold storage."
+          description="Create a vault to start archiving your files."
         />
       ) : (
-        <Grid container spacing={2}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {vaults.map(vault => (
-            <Grid key={vault.id} size={{ xs: 12, sm: 6, lg: 4 }}>
-              <VaultCard vault={vault} />
-            </Grid>
+            <VaultCard key={vault.id} vault={vault} />
           ))}
-        </Grid>
+        </div>
       )}
-    </Box>
+    </div>
   )
 }

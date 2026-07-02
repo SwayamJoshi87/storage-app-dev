@@ -6,9 +6,11 @@ export const storageTierEnum = pgEnum('storage_tier', ['hot', 'cold'])
 
 export const fileStatusEnum = pgEnum('file_status', [
   'pending_upload', // pre-signed URL issued, not yet confirmed
+  'importing',      // Drive/OneDrive background import in progress
   'active',         // stored in S3/Glacier
   'restoring',      // retrieval job in progress
   'ready',          // restored and available for download
+  'failed',         // import or other operation failed
   'deleted',
 ])
 
@@ -23,6 +25,8 @@ export const files = pgTable('files', {
   tier: storageTierEnum('tier').notNull().default('cold'),
   status: fileStatusEnum('status').notNull().default('pending_upload'),
   checksumSha256: text('checksum_sha256'),
+  googleDriveFileId: text('google_drive_file_id'),   // set for Google Drive imports
+  onedriveDriveItemId: text('onedrive_drive_item_id'), // set for OneDrive imports
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
