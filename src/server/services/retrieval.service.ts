@@ -7,10 +7,7 @@ import type { IQueueProvider } from '../providers/queue/queue.provider.interface
 import type { IEmailProvider } from '../providers/email/email.provider.interface'
 import type { Retrieval } from '@/db/schema/retrievals'
 import type { RetrievalTier } from '../types'
-
-const RETRIEVAL_LIMITS = {
-  free: 1, starter: 3, personal: 5, creator: 15, power: 40,
-} as const
+import { RETRIEVAL_LIMITS, type PlanId } from '@/lib/plans'
 
 // Poll every 30 minutes to check if the Glacier restore is complete
 const POLL_INTERVAL_SECONDS = 1800
@@ -29,7 +26,7 @@ export class RetrievalService {
     userId: string,
     fileId: string,
     tier: RetrievalTier,
-    userPlan: keyof typeof RETRIEVAL_LIMITS,
+    userPlan: PlanId,
   ): Promise<Retrieval> {
     const file = await this.fileRepo.findById(fileId)
     if (!file || file.userId !== userId) throw new Error('File not found')
@@ -95,6 +92,10 @@ export class RetrievalService {
     }
 
     return retrieval
+  }
+
+  async listRetrievals(userId: string): Promise<Retrieval[]> {
+    return this.retrievalRepo.findByUserId(userId)
   }
 
   async listPendingRetrievals(userId: string): Promise<Retrieval[]> {

@@ -9,14 +9,7 @@ import { userRepo, fileService } from '@/server/container'
 import { cn } from '@/lib/utils'
 import { SectionLabel } from '@/components/section-label'
 import type { Plan } from '@/server/services/billing.service'
-
-const PLANS = [
-  { id: 'free',     label: 'Free',     price: '$0',      archive: '25 GB',  instant: '—',       restores: 1  },
-  { id: 'starter',  label: 'Starter',  price: '$4/mo',   archive: '500 GB', instant: '—',       restores: 3  },
-  { id: 'personal', label: 'Personal', price: '$10/mo',  archive: '2 TB',   instant: '50 GB',   restores: 5  },
-  { id: 'creator',  label: 'Creator',  price: '$30/mo',  archive: '10 TB',  instant: '200 GB',  restores: 15 },
-  { id: 'power',    label: 'Power',    price: '$100/mo', archive: '50 TB',  instant: '500 GB',  restores: 40 },
-] as const
+import { PLANS, type PlanId } from '@/lib/plans'
 
 type PlanRow = typeof PLANS[number]
 
@@ -91,7 +84,7 @@ export default async function SettingsPage() {
       <div className="space-y-3">
         <SectionLabel>Storage Usage</SectionLabel>
         <StorageUsageBar
-          plan={currentPlan as 'free' | 'starter' | 'personal' | 'creator' | 'power'}
+          plan={currentPlan as PlanId}
           coldUsedBytes={storage.coldBytes}
           hotUsedBytes={storage.hotBytes}
         />

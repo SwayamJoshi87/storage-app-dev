@@ -2,11 +2,7 @@ export type StorageTier = 'hot' | 'cold'
 
 export type RetrievalTier = 'bulk' | 'standard'
 
-export type RetrievalStatus = 'pending' | 'restoring' | 'ready' | 'expired'
-
-export type MigrationSource = 'gdrive' | 'onedrive'
-
-export type MigrationStatus = 'queued' | 'running' | 'completed' | 'failed'
+export type RetrievalStatus = 'pending' | 'restoring' | 'ready' | 'expired' | 'failed'
 
 export interface FileMetadata {
   userId: string

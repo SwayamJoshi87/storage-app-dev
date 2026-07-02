@@ -1,13 +1,6 @@
 import { Progress } from '@/components/ui/progress'
 import { cn, formatBytes } from '@/lib/utils'
-
-const PLAN_LIMITS = {
-  free:     { coldBytes: 25  * 1024 ** 3, hotBytes: 0 },
-  starter:  { coldBytes: 500 * 1024 ** 3, hotBytes: 0 },
-  personal: { coldBytes: 2   * 1024 ** 4, hotBytes: 50  * 1024 ** 3 },
-  creator:  { coldBytes: 10  * 1024 ** 4, hotBytes: 200 * 1024 ** 3 },
-  power:    { coldBytes: 50  * 1024 ** 4, hotBytes: 500 * 1024 ** 3 },
-} as const
+import { PLAN_LIMITS, type PlanId } from '@/lib/plans'
 
 interface UsageRowProps {
   label: string
@@ -37,7 +30,7 @@ function UsageRow({ label, usedBytes, limitBytes, colorClass }: UsageRowProps) {
 }
 
 interface StorageUsageBarProps {
-  plan?: keyof typeof PLAN_LIMITS
+  plan?: PlanId
   coldUsedBytes?: number
   hotUsedBytes?: number
 }

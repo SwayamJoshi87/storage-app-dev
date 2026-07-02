@@ -1,9 +1,11 @@
 import { auth } from '@clerk/nextjs/server'
-import { redirect } from 'next/navigation'
+import { NextResponse } from 'next/server'
 
 export async function GET() {
   const { userId } = await auth()
-  if (!userId) redirect('/sign-in')
+  if (!userId) {
+    return NextResponse.redirect(new URL('/sign-in', process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'))
+  }
 
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID ?? '',
@@ -14,5 +16,5 @@ export async function GET() {
     prompt: 'consent',
   })
 
-  redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
+  return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
 }

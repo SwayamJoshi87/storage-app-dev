@@ -137,6 +137,6 @@ Client            Server              QStash          AWS Glacier
 
 - [x] MVP 1 -- Auth, vaults, upload to Glacier, file list
 - [x] MVP 2 -- File retrieval: restore request -> QStash background job -> email -> download
-- [ ] MVP 3 -- Stripe subscriptions, plan limits
-- [ ] MVP 4 -- Google Drive migration
-- [ ] MVP 5 -- OneDrive migration
+- [x] MVP 3 -- Stripe subscriptions, plan limits
+- [x] MVP 4 -- Google Drive migration
+- [x] MVP 5 -- OneDrive migration

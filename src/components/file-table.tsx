@@ -115,13 +115,13 @@ export function FileTable({ files }: { files: File[] }) {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-muted-foreground hover:text-primary cursor-pointer"
-                              onClick={() => toast.info('Download link available in Restores')}
+                              onClick={() => router.push('/dashboard/retrievals')}
                             />
                           }
                         >
                           <Download size={14} />
                         </TooltipTrigger>
-                        <TooltipContent>Download (see Restores)</TooltipContent>
+                        <TooltipContent>Download in Restores</TooltipContent>
                       </Tooltip>
                     )}
                     <Tooltip>

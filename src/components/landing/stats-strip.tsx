@@ -19,7 +19,7 @@ export function StatsStrip() {
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
       viewport={{ once: true }}
-      className="relative z-10 border-y border-border/40 bg-zinc-950/60 backdrop-blur-sm dark:bg-zinc-950/60 bg-zinc-100/60"
+      className="relative z-10 border-y border-border/40 bg-zinc-100/60 backdrop-blur-sm dark:bg-zinc-950/60"
     >
       <div className="mx-auto max-w-5xl px-6 py-7">
         <dl className="flex flex-wrap items-center justify-center divide-y divide-border/30 md:divide-y-0 md:divide-x md:divide-border/40">

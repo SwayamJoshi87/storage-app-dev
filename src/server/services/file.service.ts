@@ -4,14 +4,7 @@ import type { IVaultRepository } from '../repositories/interfaces/vault.reposito
 import type { IStorageProvider } from '../providers/storage/storage.provider.interface'
 import type { File } from '@/db/schema/files'
 import type { StorageTier, UploadTarget } from '../types'
-
-const PLAN_LIMITS = {
-  free:     { coldBytes: 25  * 1024 ** 3, hotBytes: 0 },
-  starter:  { coldBytes: 500 * 1024 ** 3, hotBytes: 0 },
-  personal: { coldBytes: 2   * 1024 ** 4, hotBytes: 50  * 1024 ** 3 },
-  creator:  { coldBytes: 10  * 1024 ** 4, hotBytes: 200 * 1024 ** 3 },
-  power:    { coldBytes: 50  * 1024 ** 4, hotBytes: 500 * 1024 ** 3 },
-} as const
+import { PLAN_LIMITS, type PlanId } from '@/lib/plans'
 
 export class FileService {
   constructor(
@@ -27,7 +20,7 @@ export class FileService {
     mimeType: string,
     sizeBytes: number,
     tier: StorageTier,
-    userPlan: keyof typeof PLAN_LIMITS,
+    userPlan: PlanId,
   ): Promise<{ file: File; uploadTarget: UploadTarget }> {
     // ownership check
     const vault = await this.vaultRepo.findById(vaultId)
@@ -69,12 +62,6 @@ export class FileService {
     })
 
     return { file, uploadTarget }
-  }
-
-  async uploadContent(userId: string, fileId: string, body: Buffer, contentType: string): Promise<void> {
-    const file = await this.fileRepo.findById(fileId)
-    if (!file || file.userId !== userId) throw new Error('File not found')
-    await this.storage.putObject(file.storageKey, body, contentType, file.tier as 'cold' | 'hot')
   }
 
   async confirmUpload(userId: string, fileId: string): Promise<File> {

@@ -1,16 +1,15 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { redirect } from 'next/navigation'
 import { userRepo } from '@/server/container'
 
 export async function GET(req: NextRequest) {
   const { userId } = await auth()
-  if (!userId) redirect('/sign-in')
+  if (!userId) return NextResponse.redirect(new URL('/sign-in', req.url))
 
   const code = req.nextUrl.searchParams.get('code')
   const error = req.nextUrl.searchParams.get('error')
 
-  if (error || !code) redirect('/dashboard/import/google?error=oauth_denied')
+  if (error || !code) return NextResponse.redirect(new URL('/dashboard/import/google?error=oauth_denied', req.url))
 
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -24,7 +23,7 @@ export async function GET(req: NextRequest) {
     }),
   })
 
-  if (!tokenRes.ok) redirect('/dashboard/import/google?error=token_exchange_failed')
+  if (!tokenRes.ok) return NextResponse.redirect(new URL('/dashboard/import/google?error=token_exchange_failed', req.url))
 
   const data = await tokenRes.json() as {
     access_token: string
@@ -38,5 +37,5 @@ export async function GET(req: NextRequest) {
     googleTokenExpiry: new Date(Date.now() + data.expires_in * 1000),
   })
 
-  redirect('/dashboard/import/google')
+  return NextResponse.redirect(new URL('/dashboard/import/google', req.url))
 }

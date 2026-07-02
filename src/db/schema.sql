@@ -48,15 +48,12 @@ CREATE TYPE "retrieval_status" AS ENUM (
 -- ── Tables ───────────────────────────────────────────────────────────────────
 
 CREATE TABLE "users" (
-  "id"                          text        PRIMARY KEY,          -- Clerk user ID
+  "id"                          text        PRIMARY KEY,          -- auth user ID
   "email"                       text        NOT NULL UNIQUE,
   "plan"                        "plan"      NOT NULL DEFAULT 'free',
   "stripe_customer_id"          text,
   "stripe_subscription_id"      text,
-  "cold_storage_used_bytes"     integer     NOT NULL DEFAULT 0,
-  "hot_storage_used_bytes"      integer     NOT NULL DEFAULT 0,
-  "retrievals_used_this_month"  integer     NOT NULL DEFAULT 0,
-  "retrievals_reset_at"         timestamp   NOT NULL DEFAULT now(),
+  -- Storage and retrieval usage are computed from the files/retrievals tables.
   "google_access_token"          text,
   "google_refresh_token"         text,
   "google_token_expiry"          timestamp,

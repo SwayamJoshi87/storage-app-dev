@@ -1,4 +1,4 @@
-import { eq, and, gte, count } from 'drizzle-orm'
+import { eq, and, gte, count, desc } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { retrievals } from '@/db/schema/retrievals'
 import type { Retrieval, NewRetrieval } from '@/db/schema/retrievals'
@@ -12,6 +12,14 @@ export class DrizzleRetrievalRepository implements IRetrievalRepository {
 
   async findByFileId(fileId: string): Promise<Retrieval[]> {
     return db.select().from(retrievals).where(eq(retrievals.fileId, fileId))
+  }
+
+  async findByUserId(userId: string): Promise<Retrieval[]> {
+    return db
+      .select()
+      .from(retrievals)
+      .where(eq(retrievals.userId, userId))
+      .orderBy(desc(retrievals.createdAt))
   }
 
   async findPendingByUserId(userId: string): Promise<Retrieval[]> {
